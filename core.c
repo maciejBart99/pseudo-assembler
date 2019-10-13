@@ -41,12 +41,11 @@ void addMemoryTag(char* tag,int target) {
     tagS.tag=tag;
 
     if(memoryTags.length==0) {
-        
-        *memoryTags.tags=tagS;
+        *(memoryTags.tags)=tagS;
         memoryTags.length=1;
     } else {
-        *(memoryTags.tags+memoryTags.length)=tagS;
-        memoryTags.length=1;
+        memoryTags.tags[memoryTags.length]=tagS;
+        memoryTags.length++;
     }
 
 }
@@ -66,6 +65,17 @@ void allocateMemory(char* tag,long value,short size,bool makeTag) {
     cell.size=size;
     cell.value=value;
     cell.address=address;
+
+    if(memory.length==0) {
+        memory.cells=malloc(sizeof(struct Memory));
+        memory.cells[0]=cell;
+        memory.length=1;
+    } else {
+        memory.cells=realloc(memory.cells,(memory.length+1)*sizeof(struct Memory));
+        memory.cells[memory.length]=cell;
+        memory.length++;
+    }
+
     if(makeTag) addMemoryTag(tag,address);
 }
 
@@ -74,7 +84,7 @@ long getMemoryAddress(char * tag,int line) {
     
     for(size_t i=0;i<memoryTags.length;i++) {
         struct Tag t=*(memoryTags.tags+i);
-        if(strcmp(t.tag,tag)) {
+        if(strcmp(t.tag,tag)==0) {
             return t.target;
         }
     }
@@ -104,7 +114,7 @@ long getMemoryValue(size_t addressA,int line) {
 size_t getJumpTarget(char * tag,int line) {   
     for(size_t i=0;i<memory.length;i++) {
         struct Tag t=*(jumpTags.tags+i);
-        if(strcmp(tag,t.tag)) {
+        if(strcmp(tag,t.tag)==0) {
             return t.target;
         }
     }
@@ -117,6 +127,7 @@ size_t getJumpTarget(char * tag,int line) {
 }
 
 void setMemoryValue(size_t addressA,long value,int line) {   
+
     for(size_t i=0;i<memory.length;i++) {
         struct MemoryCell m=*(memory.cells+i);
         if(m.address==addressA) {
@@ -210,6 +221,8 @@ void mathOperation(char* to,char* from, enum DataSource secondSource,enum Opeart
 void transferData(char* to,char* from, enum TransferType type,int line) {
     int valueA,valueB,addressA,addressB;
 
+
+    
     if(isNumeric(to)) {
         short tmp=atoi(to);
 
@@ -285,9 +298,15 @@ struct Order* parseOrder(char *line,int index) {
         addJumpTag(*args.array,index);
         return order;
     }
-    
 
-    if(checkIfKeyWord(*args.array)) {
+    
+    if(args.length==3) {
+        struct Order* order=malloc(sizeof(struct Order));
+        order->tag=*args.array;
+        order->command=*(args.array+1);
+        order->args=*(args.array+2);
+        return order;
+    } else if(checkIfKeyWord(*args.array)) {
         if(args.length==2) {
             struct Order* order=malloc(sizeof(struct Order));
             order->tag="";
@@ -302,15 +321,8 @@ struct Order* parseOrder(char *line,int index) {
             exit(1);
         }
 
-    } else if(args.length==3) {
-        struct Order* order=malloc(sizeof(struct Order));
-        order->tag=*args.array;
-        order->command=*(args.array+1);
-        order->args=*(args.array+2);
-        return order;
     } else {
         char*buffer;
-
         sprintf(buffer,"Błąd składni w %d lini!",index);
         logError(buffer);
         exit(1);
@@ -331,6 +343,7 @@ struct OrderList parseScript(char *fileName) {
     //alocate memory for address linkers
     jumpTags.tags=malloc(16*100);
     memoryTags.tags=malloc(16*100);
+    resultList=malloc(4*100);
     //open script
     fptr = fopen(fileName, "r");
     if (fptr == NULL)
@@ -344,13 +357,11 @@ struct OrderList parseScript(char *fileName) {
         if(resultLength==0) {
             if(read>2) {
                 resultLength=1;
-                resultList=malloc(4);
                 resultList[0]=parseOrder(line,resultLength);
             }
         } else {
             if(read>2) {
                 resultLength++;
-                resultList=realloc(resultList,resultLength*4);
                 resultList[resultLength-1]=parseOrder(line,resultLength);
             }
         }
@@ -366,19 +377,16 @@ struct OrderList parseScript(char *fileName) {
 
 size_t executeOrder(struct Order* order,int line) {
     struct CharArray arguments=str_split(order->args,',');
-   
-    if(strcmp(order->command,"")) {
-        return line;
-    }
-
     //memory allocation
-    if(strcmp(order->command,"DC")||strcmp(order->command,"DS")) {
+
+    if(strcmp(order->command,"DC")==0) {
         struct CharArray mul=str_split(*(arguments.array),'*');
         size_t up;
         struct CharArray ar;
         char * dType;
         short size;
         long valueInt;
+
 
         //check if array
         if(mul.length==1) {
@@ -436,52 +444,56 @@ size_t executeOrder(struct Order* order,int line) {
             exit(1);
         }
 
+
         //alocate single/array cell
         for(size_t i=0;i<up;i++) {
             allocateMemory(order->tag,valueInt,size,i==0);
         }
     //math instructions
-    } else if(strcmp(order->command,"A")) {
+    } else if(strcmp(order->command,"A")==0) {
         mathOperation(*(arguments.array),*(arguments.array+1),MEMORY,ADD,line);
-    } else if(strcmp(order->command,"AR")) {
+    } else if(strcmp(order->command,"AR")==0) {
         mathOperation(*(arguments.array),*(arguments.array+1),REGISTER,ADD,line);
-    } else if(strcmp(order->command,"S")) {
+    } else if(strcmp(order->command,"S")==0) {
         mathOperation(*(arguments.array),*(arguments.array+1),MEMORY,SUBSTRACT,line);
-    } else if(strcmp(order->command,"SR")) {
+    } else if(strcmp(order->command,"SR")==0) {
         mathOperation(*(arguments.array),*(arguments.array+1),REGISTER,SUBSTRACT,line);
-    } else if(strcmp(order->command,"M")) {
+    } else if(strcmp(order->command,"M")==0) {
         mathOperation(*(arguments.array),*(arguments.array+1),MEMORY,MULTIPLY,line);
-    } else if(strcmp(order->command,"MR")) {
+    } else if(strcmp(order->command,"MR")==0) {
         mathOperation(*(arguments.array),*(arguments.array+1),REGISTER,MULTIPLY,line);
-    } else if(strcmp(order->command,"D")) {
+    } else if(strcmp(order->command,"D")==0) {
         mathOperation(*(arguments.array),*(arguments.array+1),MEMORY,DIVIDE,line);
-    } else if(strcmp(order->command,"DR")) {
+    } else if(strcmp(order->command,"DR")==0) {
         mathOperation(*(arguments.array),*(arguments.array+1),REGISTER,MULTIPLY,line);
-    } else if(strcmp(order->command,"C")) {
+    } else if(strcmp(order->command,"C")==0) {
         mathOperation(*(arguments.array),*(arguments.array+1),MEMORY,COMPARE,line);
-    } else if(strcmp(order->command,"CR")) {
+    } else if(strcmp(order->command,"CR")==0) {
+
         mathOperation(*(arguments.array),*(arguments.array+1),REGISTER,COMPARE,line);
     } 
     //data tranfer
-    else if(strcmp(order->command,"L")) {
+    else if(strcmp(order->command,"L")==0) {
         transferData(*(arguments.array),*(arguments.array+1),MtoR,line);
-    } else if(strcmp(order->command,"LR")) {
+    } else if(strcmp(order->command,"LR")==0) {
         transferData(*(arguments.array),*(arguments.array+1),RtoR,line);
-    } else if(strcmp(order->command,"ST")) {
+    } else if(strcmp(order->command,"ST")==0) {
         transferData(*(arguments.array),*(arguments.array+1),RtoM,line);
-    } else if(strcmp(order->command,"LA")) {
+    } else if(strcmp(order->command,"LA")==0) {
         transferData(*(arguments.array),*(arguments.array+1),AtoR,line);
     }
     //jumps
-    else if(strcmp(order->command,"J")) {
+    else if(strcmp(order->command,"J")==0) {
         return getJumpTarget(*(arguments.array),line)-1;
-    } else if(strcmp(order->command,"JN")) {
+    } else if(strcmp(order->command,"JN")==0) {
         if(stateRegisterValue==2) return getJumpTarget(*(arguments.array),line)-1;
-    } else if(strcmp(order->command,"JP")) {
+    } else if(strcmp(order->command,"JP")==0) {
         if(stateRegisterValue==1) return getJumpTarget(*(arguments.array),line)-1;
-    } else if(strcmp(order->command,"JZ")) {
+    } else if(strcmp(order->command,"JZ")==0) {
         if(stateRegisterValue==0) return getJumpTarget(*(arguments.array),line)-1;
     }
+
+
 
     return line;
 }

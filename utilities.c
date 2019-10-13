@@ -157,14 +157,14 @@ struct CharArray str_split(char* a_str, const char a_delim)
 
 bool checkIfKeyWord(char* word) {
     bool result=false;
-    char keyWords[][2]={"A","AR","S","SR","M","MR","D","DR","L","LS","LR","DS","DC","J","JZ","JP","JN","C","CR"};
+    char keyWords[][3]={"A","AR","S","SR","M","MR","D","DR","L","ST","LR","LR","DS","DC","J","JZ","JP","JN","C","CR"};
     size_t length;
 
     length=sizeof(keyWords)/(2*sizeof(char));
 
     for (size_t i = 0; i < length; i++)
     {
-        if(strcmp(keyWords[i],word)) result=true;
+        if(strcmp(keyWords[i],word)==0) result=true;
     }
     
     return result;

@@ -6,7 +6,6 @@
 #include "functions.h"
 
 
-
 int main(int argc,char *argv[]) {
     char fileName[256];
     char lastTag=' ';
