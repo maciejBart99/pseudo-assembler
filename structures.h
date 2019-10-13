@@ -31,7 +31,8 @@ struct TagsList {
 
 struct Tag {
     char *tag;
-    int target;
+    size_t target;
+    size_t array_len;
 };
 
 struct Register
@@ -44,6 +45,6 @@ struct MemoryCell
 {
     short size;
     long value;
-    int address;
+    size_t address;
 };
 

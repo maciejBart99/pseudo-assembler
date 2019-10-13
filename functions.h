@@ -22,3 +22,15 @@ long getMicrotime();
 char *trim(char *str);
 
 bool isNumeric(const char *str);
+
+void clearMemory(struct OrderList listToClear);
+
+long getMemoryAddress(char * tag,int line);
+
+long getMemoryValue(size_t addressA,int line);
+
+size_t getMemoryRows(size_t addressA);
+
+size_t getMemoryIndex(size_t addressA);
+
+long getMemoryValueByIndex(size_t index);

@@ -12,13 +12,14 @@ struct Memory memory={NULL,0};
 struct Register registers[]={{0,0},{1,0},{2,0},{3,0},{4,0},{5,0},{6,0},{7,0},{8,0},{9,0},{10,0},{11,0},{12,0},{13,0},{14,0},{15,0}};
 short stateRegisterValue=0;
 
+//local enums def
 enum OpeartionType{ADD,SUBSTRACT,MULTIPLY,DIVIDE,COMPARE};
 
 enum TransferType{MtoR,RtoM,RtoR,AtoR};
 
 enum DataSource {MEMORY,REGISTER};
 
-void addJumpTag(char* tag,int target) {
+void addJumpTag(char* tag,size_t target) {
     struct Tag tagS;
 
     tagS.target=target;
@@ -34,11 +35,12 @@ void addJumpTag(char* tag,int target) {
 
 }
 
-void addMemoryTag(char* tag,int target) {
+void addMemoryTag(char* tag,size_t target,size_t rows) {
     struct Tag tagS;
 
     tagS.target=target;
     tagS.tag=tag;
+    tagS.array_len=rows;
 
     if(memoryTags.length==0) {
         *(memoryTags.tags)=tagS;
@@ -50,7 +52,7 @@ void addMemoryTag(char* tag,int target) {
 
 }
 
-void allocateMemory(char* tag,long value,short size,bool makeTag) {
+void allocateMemory(char* tag,long value,short size,bool makeTag,size_t rows) {
 
     size_t address;
     struct MemoryCell cell;
@@ -76,7 +78,7 @@ void allocateMemory(char* tag,long value,short size,bool makeTag) {
         memory.length++;
     }
 
-    if(makeTag) addMemoryTag(tag,address);
+    if(makeTag) addMemoryTag(tag,address,rows);
 }
 
 long getMemoryAddress(char * tag,int line) {
@@ -84,6 +86,7 @@ long getMemoryAddress(char * tag,int line) {
     
     for(size_t i=0;i<memoryTags.length;i++) {
         struct Tag t=*(memoryTags.tags+i);
+
         if(strcmp(t.tag,tag)==0) {
             return t.target;
         }
@@ -91,8 +94,32 @@ long getMemoryAddress(char * tag,int line) {
 
     char*buffer;
 
-    sprintf(buffer,"Nieodnaleziono komórki pamięci o podanym adresie w %d lini!",line);
+    sprintf(buffer,"Nieodnaleziono komórki pamięci o podanej etykiecie w %d lini!",line+1);
     logError(buffer);
+    exit(1);
+}
+
+size_t getMemoryRows(size_t addressA) {   
+    for(size_t i=0;i<memory.length;i++) {
+        struct Tag m=*(memoryTags.tags+i);
+        if(m.target==addressA) {
+            return m.array_len;
+        }
+    }
+
+    logError("Nieodnaleziono podanego adresu!");
+    exit(1);
+}
+
+size_t getMemoryIndex(size_t addressA) {   
+    for(size_t i=0;i<memoryTags.length;i++) {
+        struct MemoryCell m=*(memory.cells+i);
+
+        if(m.address==addressA)
+            return i;
+    }
+
+    logError("Nieodnaleziono podanego adresu");
     exit(1);
 }
 
@@ -106,14 +133,20 @@ long getMemoryValue(size_t addressA,int line) {
 
     char*buffer;
 
-    sprintf(buffer,"Nieodnaleziono komórki pamięci o podanym adresie w %d lini!",line);
+    sprintf(buffer,"Nieodnaleziono komórki pamięci o podanym adresie w %d lini!",line+1);
     logError(buffer);
     exit(1);
 }
 
+long getMemoryValueByIndex(size_t index) {   
+   return (*(memory.cells+index)).value;
+}
+
 size_t getJumpTarget(char * tag,int line) {   
-    for(size_t i=0;i<memory.length;i++) {
+
+    for(size_t i=0;i<jumpTags.length;i++) {
         struct Tag t=*(jumpTags.tags+i);
+
         if(strcmp(tag,t.tag)==0) {
             return t.target;
         }
@@ -121,7 +154,7 @@ size_t getJumpTarget(char * tag,int line) {
 
     char*buffer;
 
-    sprintf(buffer,"Nieodnaleziono wskazanej etykiety w %d lini!",line);
+    sprintf(buffer,"Nieodnaleziono wskazanej etykiety w %d lini!",line+1);
     logError(buffer);
     exit(1);
 }
@@ -157,6 +190,7 @@ void mathOperation(char* to,char* from, enum DataSource secondSource,enum Opeart
             exit(1);
         } else {
             addressA=tmp;
+            valueA=registers[addressA].value;
         }
     } else {
         char*buffer;
@@ -293,8 +327,8 @@ struct Order* parseOrder(char *line,int index) {
     }
     if(args.length==1) {
         struct Order* order=malloc(sizeof(struct Order));
-        strcpy(order->tag,*args.array);
-        strcpy(order->command,"");
+        order->tag=*args.array;
+        order->command="";
         addJumpTag(*args.array,index);
         return order;
     }
@@ -305,6 +339,10 @@ struct Order* parseOrder(char *line,int index) {
         order->tag=*args.array;
         order->command=*(args.array+1);
         order->args=*(args.array+2);
+
+        if(strcmp(order->command,"DC")!=0&&strcmp(order->command,"DS")!=0)
+            addJumpTag(order->tag,index);
+
         return order;
     } else if(checkIfKeyWord(*args.array)) {
         if(args.length==2) {
@@ -354,15 +392,22 @@ struct OrderList parseScript(char *fileName) {
 
     //read script line by line
     while ((read = getline(&line, &len, fptr)) != -1) {
+
+        if(line[strlen(line)-1]=='\n')
+            line[strlen(line)-1] = 0;
+
+        if(trim(line)[0]=='/'&&trim(line)[1]=='/')
+            continue;
+
         if(resultLength==0) {
             if(read>2) {
                 resultLength=1;
-                resultList[0]=parseOrder(line,resultLength);
+                resultList[0]=parseOrder(line,resultLength-1);
             }
         } else {
             if(read>2) {
                 resultLength++;
-                resultList[resultLength-1]=parseOrder(line,resultLength);
+                resultList[resultLength-1]=parseOrder(line,resultLength-1);
             }
         }
     }
@@ -377,8 +422,11 @@ struct OrderList parseScript(char *fileName) {
 
 size_t executeOrder(struct Order* order,int line) {
     struct CharArray arguments=str_split(order->args,',');
-    //memory allocation
 
+    if(strcmp(order->command,"")==0)
+        return line;
+
+    //memory allocation
     if(strcmp(order->command,"DC")==0) {
         struct CharArray mul=str_split(*(arguments.array),'*');
         size_t up;
@@ -400,7 +448,7 @@ size_t executeOrder(struct Order* order,int line) {
         if(up<1) {
             char*buffer;
 
-            sprintf(buffer,"Nie można utowrzyć tablicy o podanym rozmiarze w %d lini!",line);
+            sprintf(buffer,"Nie można utworzyć tablicy o podanym rozmiarze w %d lini!",line);
             logError(buffer);
             exit(1);
         }
@@ -447,7 +495,7 @@ size_t executeOrder(struct Order* order,int line) {
 
         //alocate single/array cell
         for(size_t i=0;i<up;i++) {
-            allocateMemory(order->tag,valueInt,size,i==0);
+            allocateMemory(order->tag,valueInt,size,i==0,up);
         }
     //math instructions
     } else if(strcmp(order->command,"A")==0) {
@@ -484,7 +532,7 @@ size_t executeOrder(struct Order* order,int line) {
     }
     //jumps
     else if(strcmp(order->command,"J")==0) {
-        return getJumpTarget(*(arguments.array),line)-1;
+        return("%d",getJumpTarget(*(arguments.array),line)-1);
     } else if(strcmp(order->command,"JN")==0) {
         if(stateRegisterValue==2) return getJumpTarget(*(arguments.array),line)-1;
     } else if(strcmp(order->command,"JP")==0) {
@@ -503,8 +551,4 @@ void executeScript(struct OrderList orders){
         struct Order* order=*(orders.orders+i);
         i=executeOrder(order,i);
     }
-}
-
-void clearMemory(struct OrderList listToClear) {
-
 }

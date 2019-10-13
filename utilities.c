@@ -109,14 +109,15 @@ size_t getline(char **lineptr, size_t *n, FILE *stream) {
     return p - bufptr - 1;
 }
 
-struct CharArray str_split(char* a_str, const char a_delim)
+struct CharArray str_split(char* a_str, char a_delim)
 {
-    char** result    = 0;
+    char** result= 0;
     struct CharArray array;
-    size_t count     = 0;
-    char* tmp        = a_str;
+    size_t count= 0;
+    char* tmp= a_str;
     char* last_comma = 0;
     char delim[2];
+    size_t length=0;
     delim[0] = a_delim;
     delim[1] = 0;
 
@@ -137,20 +138,19 @@ struct CharArray str_split(char* a_str, const char a_delim)
     if (result)
     {
         size_t idx  = 0;
-        char* token = strtok(a_str, delim);
+        char *token;
+        token = strtok(a_str, delim);
 
-        while (token)
-        {
-            assert(idx < count);
+        while( token != NULL ) {
+            length++;
             *(result + idx++) = strdup(token);
-            token = strtok(0, delim);
+            token = strtok(NULL, delim);
         }
-        assert(idx == count - 1);
         *(result + idx) = 0;
     }
 
     array.array=result;
-    array.length=count-1;
+    array.length=length;
 
     return array;
 }
