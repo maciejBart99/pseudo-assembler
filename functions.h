@@ -9,7 +9,7 @@ struct OrderList parseScript(char *fileName);
 
 int logError(char*message);
 
-struct CharArray str_split(char* a_str, const char a_delim);
+struct CharArray str_split(char* a_str, const char a_delim,int limit);
 
 size_t getline(char **lineptr, size_t *n, FILE *stream);
 

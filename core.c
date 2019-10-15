@@ -11,6 +11,7 @@ struct TagsList memoryTags = {0,NULL};
 struct Memory memory={NULL,0};
 struct Register registers[]={{0,0},{1,0},{2,0},{3,0},{4,0},{5,0},{6,0},{7,0},{8,0},{9,0},{10,0},{11,0},{12,0},{13,0},{14,0},{15,0}};
 short stateRegisterValue=0;
+struct TagsList inputsList={0,NULL};
 
 //local enums def
 enum OpeartionType{ADD,SUBSTRACT,MULTIPLY,DIVIDE,COMPARE};
@@ -29,6 +30,11 @@ void addJumpTag(char* tag,size_t target) {
         *(jumpTags.tags)=tagS;
         jumpTags.length=1;
     } else {
+
+        if(jumpTags.length%10==0) {
+            jumpTags.tags=realloc(jumpTags.tags,(jumpTags.length+10)*sizeof(struct Tag));
+        }
+
         jumpTags.tags[jumpTags.length]=tagS;
         jumpTags.length++;
     }
@@ -46,13 +52,18 @@ void addMemoryTag(char* tag,size_t target,size_t rows) {
         *(memoryTags.tags)=tagS;
         memoryTags.length=1;
     } else {
+
+        if(memoryTags.length%10==0) {
+            memoryTags.tags=realloc(memoryTags.tags,(memoryTags.length+10)*sizeof(struct Tag));
+        }
+
         memoryTags.tags[memoryTags.length]=tagS;
         memoryTags.length++;
     }
 
 }
 
-void allocateMemory(char* tag,long value,short size,bool makeTag,size_t rows) {
+size_t allocateMemory(char* tag,long value,short size,bool makeTag,size_t rows) {
 
     size_t address;
     struct MemoryCell cell;
@@ -79,6 +90,8 @@ void allocateMemory(char* tag,long value,short size,bool makeTag,size_t rows) {
     }
 
     if(makeTag) addMemoryTag(tag,address,rows);
+
+    return cell.address;
 }
 
 long getMemoryAddress(char * tag,int line) {
@@ -94,7 +107,7 @@ long getMemoryAddress(char * tag,int line) {
 
     char*buffer;
 
-    sprintf(buffer,"Nieodnaleziono komórki pamięci o podanej etykiecie w %d lini!",line+1);
+    sprintf(buffer,"Nieodnaleziono kom\242rki pami\251ci o podanej etykiecie w %d lini!",line+1);
     logError(buffer);
     exit(1);
 }
@@ -133,7 +146,7 @@ long getMemoryValue(size_t addressA,int line) {
 
     char*buffer;
 
-    sprintf(buffer,"Nieodnaleziono komórki pamięci o podanym adresie w %d lini!",line+1);
+    sprintf(buffer,"Nieodnaleziono kom\242rki pami\251ci o podanym adresie w %d lini!",line+1);
     logError(buffer);
     exit(1);
 }
@@ -171,7 +184,7 @@ void setMemoryValue(size_t addressA,long value,int line) {
 
     char*buffer;
 
-    sprintf(buffer,"Nieodnaleziono komórki pamięci o podanym adresie w %d lini!",line);
+    sprintf(buffer,"Nieodnaleziono kom\242rki pami\251ci o podanym adresie w %d lini!",line+1);
     logError(buffer);
     exit(1);
 }
@@ -179,13 +192,16 @@ void setMemoryValue(size_t addressA,long value,int line) {
 void mathOperation(char* to,char* from, enum DataSource secondSource,enum OpeartionType type,int line) {
     int valueA,valueB,addressA,addressB;
 
+    to=trim(to);
+    from=trim(from);
+
     if(isNumeric(to)) {
         short tmp=atoi(to);
 
         if(tmp<0||tmp>13) {
             char*buffer;
 
-            sprintf(buffer,"Odwołanie do rejestru musi się odbywać poprzez liczbę od 0 do 13 %d lini!",line);
+            sprintf(buffer,"Odwo\210anie do rejestru musi się odbywa\206 poprzez liczb\251 od 0 do 13 %d lini!",line);
             logError(buffer);
             exit(1);
         } else {
@@ -195,7 +211,7 @@ void mathOperation(char* to,char* from, enum DataSource secondSource,enum Opeart
     } else {
         char*buffer;
 
-        sprintf(buffer,"Odwołanie do rejestru musi się odbywać poprzez liczbę od 0 do 13 %d lini!",line);
+        sprintf(buffer,"Odwo\210anie do rejestru musi się odbywa\206 poprzez liczb\251 od 0 do 13 %d lini!",line);
         logError(buffer);
         exit(1);
     }
@@ -208,7 +224,7 @@ void mathOperation(char* to,char* from, enum DataSource secondSource,enum Opeart
             if(tmp<0||tmp>13) {
                 char*buffer;
 
-                sprintf(buffer,"Odwołanie do rejestru musi się odbywać poprzez liczbę od 0 do 13 %d lini!",line);
+                sprintf(buffer,"Odwo\210anie do rejestru musi się odbywa\206 poprzez liczb\251 od 0 do 13 %d lini!",line);
                 logError(buffer);
                 exit(1);
             } else {
@@ -217,7 +233,7 @@ void mathOperation(char* to,char* from, enum DataSource secondSource,enum Opeart
         } else {
             char*buffer;
 
-            sprintf(buffer,"Odwołanie do rejestru musi się odbywać poprzez liczbę od 0 do 13 %d lini!",line);
+            sprintf(buffer,"Odwo\210anie do rejestru musi się odbywa\206 poprzez liczb\251 od 0 do 13 %d lini!",line);
             logError(buffer);
             exit(1);
         }
@@ -256,14 +272,15 @@ void transferData(char* to,char* from, enum TransferType type,int line) {
     int valueA,valueB,addressA,addressB;
 
 
-    
+    to=trim(to);
+    from=trim(from);
     if(isNumeric(to)) {
         short tmp=atoi(to);
 
         if(tmp<0||tmp>13) {
             char*buffer;
 
-            sprintf(buffer,"Odwołanie do rejestru musi się odbywać poprzez liczbę od 0 do 13 %d lini!",line);
+            sprintf(buffer,"Odwo\210anie do rejestru musi się odbywa\206 poprzez liczb\251 od 0 do 13 %d lini!",line);
             logError(buffer);
             exit(1);
         } else {
@@ -272,7 +289,7 @@ void transferData(char* to,char* from, enum TransferType type,int line) {
     } else {
         char*buffer;
 
-        sprintf(buffer,"Odwołanie do rejestru musi się odbywać poprzez liczbę od 0 do 13 %d lini!",line);
+        sprintf(buffer,"Odwo\210anie do rejestru musi się odbywa\206 poprzez liczb\251 od 0 do 13 %d lini!",line);
         logError(buffer);
         exit(1);
     }
@@ -290,7 +307,7 @@ void transferData(char* to,char* from, enum TransferType type,int line) {
                         if(tmp<0||tmp>13) {
                             char*buffer;
 
-                            sprintf(buffer,"Odwołanie do rejestru musi się odbywać poprzez liczbę od 0 do 13 %d lini!",line);
+                            sprintf(buffer,"Odwo\210anie do rejestru musi się odbywa\206 poprzez liczb\251 od 0 do 13 %d lini!",line);
                             logError(buffer);
                             exit(1);
                         } else {
@@ -299,7 +316,7 @@ void transferData(char* to,char* from, enum TransferType type,int line) {
                     } else {
                         char*buffer;
 
-                        sprintf(buffer,"Odwołanie do rejestru musi się odbywać poprzez liczbę od 0 do 13 %d lini!",line);
+                        sprintf(buffer,"Odwo\210anie do rejestru musi się odbywa\206 poprzez liczb\251 od 0 do 13 %d lini!",line);
                         logError(buffer);
                         exit(1);
                     }
@@ -316,20 +333,25 @@ struct Order* parseOrder(char *line,int index) {
     int elementsCount;
     size_t tmpSize;
 
-    args=str_split(line,' ');
+    args=str_split(strdup(line),' ',3);
+
+    if(checkIfKeyWord(*args.array)) {
+        args=str_split(line,' ',2);
+    }
 
     if(args.length>3) {
         char*buffer;
 
-        sprintf(buffer,"Błąd składni w %d lini!",index);
+        sprintf(buffer,"B\210\245d sk\210adni w %d lini!",index);
         logError(buffer);
         exit(1);
     }
     if(args.length==1) {
         struct Order* order=malloc(sizeof(struct Order));
-        order->tag=*args.array;
+        order->tag=trim(*args.array);
+        order->command=malloc(sizeof(char));
         order->command="";
-        addJumpTag(*args.array,index);
+        addJumpTag(trim(*args.array),index);
         return order;
     }
 
@@ -340,6 +362,26 @@ struct Order* parseOrder(char *line,int index) {
         order->command=*(args.array+1);
         order->args=*(args.array+2);
 
+        if(strcmp(order->command,"DS")==0)
+        {   
+            struct Tag tag;
+            struct CharArray ar=str_split(strdup(trim(order->args)),'*',2);
+
+            if(inputsList.length%10==0&&inputsList.length!=0)
+            {
+                inputsList.tags=realloc(inputsList.tags,sizeof(struct Tag)*(inputsList.length+10));
+            }
+            tag.tag=order->tag;
+            tag.target=0;
+            if(ar.length==1)
+                tag.array_len=1;
+            else
+                tag.array_len=atoi(trim(*ar.array));
+            
+            *(inputsList.tags+inputsList.length)=tag;
+            inputsList.length++;
+        }
+
         if(strcmp(order->command,"DC")!=0&&strcmp(order->command,"DS")!=0)
             addJumpTag(order->tag,index);
 
@@ -348,20 +390,20 @@ struct Order* parseOrder(char *line,int index) {
         if(args.length==2) {
             struct Order* order=malloc(sizeof(struct Order));
             order->tag="";
-            order->command=*args.array;
-            order->args=*(args.array+1);
+            order->command=trim(*args.array);
+            order->args=trim(*(args.array+1));
             return order;
         } else {
             char*buffer;
 
-            sprintf(buffer,"Błąd składni w %d lini!",index);
+             sprintf(buffer,"B\210\245d sk\210adni w %d lini!",index);
             logError(buffer);
             exit(1);
         }
 
     } else {
         char*buffer;
-        sprintf(buffer,"Błąd składni w %d lini!",index);
+         sprintf(buffer,"B\210\245d sk\210adni w %d lini!",index);
         logError(buffer);
         exit(1);
     }
@@ -379,9 +421,10 @@ struct OrderList parseScript(char *fileName) {
     size_t resultLength=0;
 
     //alocate memory for address linkers
-    jumpTags.tags=malloc(16*100);
-    memoryTags.tags=malloc(16*100);
-    resultList=malloc(4*100);
+    jumpTags.tags=malloc(sizeof(struct Tag)*10);
+    memoryTags.tags=malloc(sizeof(struct Tag)*10);
+    resultList=malloc(sizeof(struct Order*)*100);
+    inputsList.tags =malloc(sizeof(struct Tag)*10);
     //open script
     fptr = fopen(fileName, "r");
     if (fptr == NULL)
@@ -398,6 +441,10 @@ struct OrderList parseScript(char *fileName) {
 
         if(trim(line)[0]=='/'&&trim(line)[1]=='/')
             continue;
+
+        if(resultLength%100==0&&resultList!=0) {
+            resultList=realloc(resultList,(resultLength+100)*sizeof(struct Order *));
+        }
 
         if(resultLength==0) {
             if(read>2) {
@@ -421,34 +468,35 @@ struct OrderList parseScript(char *fileName) {
 }
 
 size_t executeOrder(struct Order* order,int line) {
-    struct CharArray arguments=str_split(order->args,',');
+    struct CharArray arguments=str_split(order->args,',',100);
 
     if(strcmp(order->command,"")==0)
         return line;
 
     //memory allocation
-    if(strcmp(order->command,"DC")==0) {
-        struct CharArray mul=str_split(*(arguments.array),'*');
+    if(strcmp(order->command,"DC")==0||strcmp(order->command,"DS")==0) {
+        struct CharArray mul=str_split(*(arguments.array),'*',3);
         size_t up;
+        bool hasTag=false;
+        struct Tag t;
         struct CharArray ar;
         char * dType;
         short size;
         long valueInt;
 
-
         //check if array
         if(mul.length==1) {
-            ar=str_split(*mul.array,'(');
+            ar=str_split(trim(*mul.array),'(',3);
             up=1;
         } else {
-            ar=str_split(*(mul.array+1),'(');
-            up=_atoi64(*(mul.array));
+            ar=str_split(trim(*(mul.array+1)),'(',3);
+            up=_atoi64(trim(*(mul.array)));
         }
 
         if(up<1) {
             char*buffer;
 
-            sprintf(buffer,"Nie można utworzyć tablicy o podanym rozmiarze w %d lini!",line);
+            sprintf(buffer,"Nie mo\276na utworzy\206 tablicy o podanym rozmiarze w %d lini!",line);
             logError(buffer);
             exit(1);
         }
@@ -463,7 +511,7 @@ size_t executeOrder(struct Order* order,int line) {
         } else {
             char*buffer;
 
-            sprintf(buffer,"Nieobsługiwany typ danych w %d lini!",line);
+            sprintf(buffer,"Nieobs\210ugiwany typ danych w %d lini!",line);
             logError(buffer);
             exit(1);
         }
@@ -484,18 +532,51 @@ size_t executeOrder(struct Order* order,int line) {
 
         } else if(ar.length==1) {
             valueInt=0;
+            
         } else {
             char*buffer;
 
-            sprintf(buffer,"Błąd składni w %d lini!",line);
+            sprintf(buffer,"B\210\245d sk\210adni w %d lini!",line);
             logError(buffer);
             exit(1);
         }
 
+        if(strcmp(order->command,"DS")==0) {
+            for(size_t i=0;i<inputsList.length;i++) {
+                t=*(inputsList.tags+i);
 
-        //alocate single/array cell
-        for(size_t i=0;i<up;i++) {
-            allocateMemory(order->tag,valueInt,size,i==0,up);
+                if(strcmp(t.tag,order->tag)==0) {
+                    if(t.array_len==1) {
+                        valueInt=t.target;
+                    } else if(t.target!=-1) {
+                        hasTag=true;
+                    }
+                    break;
+                }
+            }
+        }
+
+        if(hasTag) {
+            struct CharArray ar=str_split(trim(t.add),',',1000);
+            //if this field has been completed by user
+            if(ar.length!=t.array_len)
+            {
+                char*buffer;
+
+                sprintf(buffer,"Dana tablica ma z\210y wymiar w %d lini!",0);
+                logError(buffer);
+                exit(1);
+            }
+
+            for(size_t i=0;i<up;i++) {
+                size_t a=allocateMemory(order->tag,valueInt,size,i==0,up);
+                setMemoryValue(a,atoi(trim(*(ar.array+i))),line);
+            }
+        } else {
+            //alocate single/array cell
+            for(size_t i=0;i<up;i++) {
+                allocateMemory(order->tag,valueInt,size,i==0,up);
+            }
         }
     //math instructions
     } else if(strcmp(order->command,"A")==0) {
@@ -549,6 +630,8 @@ size_t executeOrder(struct Order* order,int line) {
 void executeScript(struct OrderList orders){
     for(size_t i=0;i<orders.length;i++) {
         struct Order* order=*(orders.orders+i);
-        i=executeOrder(order,i);
+        
+        if(strcmp(order->command,"")!=0)
+            i=executeOrder(order,i);
     }
 }

@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <assert.h>
+#include <math.h>
 #include "structures.h"
 
 char *trim(char *str)
@@ -13,8 +14,7 @@ char *trim(char *str)
     char *frontp = str;
     char *endp = NULL;
 
-    if( str == NULL ) { return NULL; }
-    if( str[0] == '\0' ) { return str; }
+    if( str[0] == '\0' )return str;
 
     len = strlen(str);
     endp = str + len;
@@ -63,15 +63,6 @@ size_t getline(char **lineptr, size_t *n, FILE *stream) {
     size_t size;
     int c;
 
-    if (lineptr == NULL) {
-        return -1;
-    }
-    if (stream == NULL) {
-        return -1;
-    }
-    if (n == NULL) {
-        return -1;
-    }
     bufptr = *lineptr;
     size = *n;
 
@@ -109,50 +100,76 @@ size_t getline(char **lineptr, size_t *n, FILE *stream) {
     return p - bufptr - 1;
 }
 
-struct CharArray str_split(char* a_str, char a_delim)
+struct CharArray str_split(char* a_str, char a_delim,int limit)
 {
-    char** result= 0;
-    struct CharArray array;
-    size_t count= 0;
-    char* tmp= a_str;
-    char* last_comma = 0;
-    char delim[2];
-    size_t length=0;
-    delim[0] = a_delim;
-    delim[1] = 0;
+    struct CharArray result;
+    bool hasSetPointer=false;
+    bool lastSpaceOrDel=false;
+    bool lastWasDel=false;
+    size_t idx=0;
+    size_t tmp=0;
+    size_t size=1;
+    size_t element=0;
 
-    while (*tmp)
+    a_str=trim(a_str);
+
+    if(*(a_str)=='\0') {
+        result.length=0;
+        return result;
+    }
+
+    //calculate array size
+    while (*(a_str+idx)!='\0')
     {
-        if (a_delim == *tmp)
+        if(*(a_str+idx)==a_delim) {
+            size++;
+        }
+        idx++;
+    }
+
+    if(size>limit)
+        size=limit;
+
+    result.array=malloc(size*sizeof(char*));
+    idx=0;
+
+
+    //split string
+    while (*(a_str+idx)!='\0')
+    {
+        if(element>=limit-1)
         {
-            count++;
-            last_comma = tmp;
+            *(result.array+element)=strdup(a_str+tmp);
+            hasSetPointer=true;
+            break;
         }
-        tmp++;
+
+        if(*(a_str+idx)==a_delim) {
+            if(lastWasDel)
+            {
+                tmp++;
+            } else {
+                *(a_str+idx)='\0';
+                *(result.array+element)=strdup(a_str+tmp);
+                hasSetPointer=false;
+                element++;
+                lastWasDel=true;
+                tmp=idx+1;
+                }
+        } else {
+            lastWasDel=false;
+        }
+
+
+        idx++;
+    }
+    if(!hasSetPointer) {
+        *(result.array+element)=strdup(a_str+tmp);
     }
 
-    count += last_comma < (a_str + strlen(a_str) - 1);
-    count++;
-    result = (char**)malloc(sizeof(char*) * count);
+    result.length=size;
 
-    if (result)
-    {
-        size_t idx  = 0;
-        char *token;
-        token = strtok(a_str, delim);
-
-        while( token != NULL ) {
-            length++;
-            *(result + idx++) = strdup(token);
-            token = strtok(NULL, delim);
-        }
-        *(result + idx) = 0;
-    }
-
-    array.array=result;
-    array.length=length;
-
-    return array;
+    return result;
 }
 
 bool checkIfKeyWord(char* word) {

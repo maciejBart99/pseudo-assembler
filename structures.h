@@ -31,7 +31,8 @@ struct TagsList {
 
 struct Tag {
     char *tag;
-    size_t target;
+    char * add;
+    int target;
     size_t array_len;
 };
 
