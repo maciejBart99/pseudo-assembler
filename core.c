@@ -105,6 +105,7 @@ long getMemoryAddress(char * tag,int line) {
         }
     }
 
+
     char*buffer;
 
     sprintf(buffer,"Nieodnaleziono kom\242rki pami\251ci o podanej etykiecie w %d lini!",line+1);
@@ -251,7 +252,8 @@ void mathOperation(char* to,char* from, enum DataSource secondSource,enum Opeart
             break;
         case DIVIDE:   registers[addressA].value=valueA/valueB;
             break;
-        case COMPARE:   registers[addressA].value=valueA-valueB;
+        case COMPARE:   
+        registers[addressA].value=valueA-valueB;
             break;
     }
 
@@ -420,11 +422,7 @@ struct OrderList parseScript(char *fileName) {
     ssize_t read;
     size_t resultLength=0;
 
-    //alocate memory for address linkers
-    jumpTags.tags=malloc(sizeof(struct Tag)*10);
-    memoryTags.tags=malloc(sizeof(struct Tag)*10);
     resultList=malloc(sizeof(struct Order*)*100);
-    inputsList.tags =malloc(sizeof(struct Tag)*10);
     //open script
     fptr = fopen(fileName, "r");
     if (fptr == NULL)
@@ -467,11 +465,19 @@ struct OrderList parseScript(char *fileName) {
     return list;
 }
 
+void initMemory() {
+     //alocate memory for address linkers
+    jumpTags.tags=malloc(sizeof(struct Tag)*10);
+    memoryTags.tags=malloc(sizeof(struct Tag)*10);
+    inputsList.tags =malloc(sizeof(struct Tag)*10);
+}
+
 size_t executeOrder(struct Order* order,int line) {
-    struct CharArray arguments=str_split(order->args,',',100);
+    struct CharArray arguments=str_split(strdup(order->args),',',100);
 
     if(strcmp(order->command,"")==0)
         return line;
+
 
     //memory allocation
     if(strcmp(order->command,"DC")==0||strcmp(order->command,"DS")==0) {
@@ -483,6 +489,15 @@ size_t executeOrder(struct Order* order,int line) {
         char * dType;
         short size;
         long valueInt;
+
+
+        if(checkIfKeyWord(order->tag)) {
+            char*buffer;
+
+            sprintf(buffer,"Z/245a nazwa zmiennej w %d lini!",line);
+            logError(buffer);
+            exit(1); 
+        }
 
         //check if array
         if(mul.length==1) {
@@ -541,10 +556,10 @@ size_t executeOrder(struct Order* order,int line) {
             exit(1);
         }
 
+
         if(strcmp(order->command,"DS")==0) {
             for(size_t i=0;i<inputsList.length;i++) {
                 t=*(inputsList.tags+i);
-
                 if(strcmp(t.tag,order->tag)==0) {
                     if(t.array_len==1) {
                         valueInt=t.target;
@@ -598,7 +613,6 @@ size_t executeOrder(struct Order* order,int line) {
     } else if(strcmp(order->command,"C")==0) {
         mathOperation(*(arguments.array),*(arguments.array+1),MEMORY,COMPARE,line);
     } else if(strcmp(order->command,"CR")==0) {
-
         mathOperation(*(arguments.array),*(arguments.array+1),REGISTER,COMPARE,line);
     } 
     //data tranfer
@@ -613,7 +627,7 @@ size_t executeOrder(struct Order* order,int line) {
     }
     //jumps
     else if(strcmp(order->command,"J")==0) {
-        return("%d",getJumpTarget(*(arguments.array),line)-1);
+        return(getJumpTarget(*(arguments.array),line)-1);
     } else if(strcmp(order->command,"JN")==0) {
         if(stateRegisterValue==2) return getJumpTarget(*(arguments.array),line)-1;
     } else if(strcmp(order->command,"JP")==0) {
@@ -630,7 +644,7 @@ size_t executeOrder(struct Order* order,int line) {
 void executeScript(struct OrderList orders){
     for(size_t i=0;i<orders.length;i++) {
         struct Order* order=*(orders.orders+i);
-        
+
         if(strcmp(order->command,"")!=0)
             i=executeOrder(order,i);
     }

@@ -34,3 +34,5 @@ size_t getMemoryRows(size_t addressA);
 size_t getMemoryIndex(size_t addressA);
 
 long getMemoryValueByIndex(size_t index);
+
+void initMemory();

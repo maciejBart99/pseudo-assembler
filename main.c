@@ -19,6 +19,8 @@ int main(int argc, char *argv[])
     char outputs[200];
     struct CharArray oArray;
 
+    initMemory();
+
     if(argc==2)
     {
         strcpy(fileName, argv[1]);
@@ -41,9 +43,44 @@ int main(int argc, char *argv[])
                     strcpy(outputs, argv[i]);
                     hasSetOutput= true;
                     break;
+                case 'i':
+                    {
+                       struct CharArray ar=str_split(argv[i],';',100);
+
+                       for(size_t i=0;i<ar.length;i++) {
+                           char*tmp;
+                           struct Tag tag;
+                           struct CharArray ar2=str_split(*(ar.array+i),'=',2);
+
+                           tag.tag=*(ar.array+i);
+                        
+                            hasSetInput=true;
+                            tmp=*(ar2.array+1);
+
+                           if(*tmp=='[') {
+                                struct CharArray ar3;
+
+                                tmp++;
+                                tmp[strlen(tmp)-1]='\0';
+
+                                ar3=str_split(strdup(tmp),',',1000);
+                                tag.add=tmp;
+                                tag.array_len=ar3.length;
+                           } else {
+                               tag.array_len=1;
+                               tag.target=atoi(tmp);
+                           }
+
+
+                           *(inputsList.tags+inputsList.length)=tag;
+                           inputsList.length++;
+                       } 
+                    }
+                    break;
                 default:
                     break;
                 }
+                lastTag=' ';
             }
         }
     }
@@ -68,22 +105,23 @@ int main(int argc, char *argv[])
 
     orders = parseScript(fileName);
 
-
+    if(!hasSetInput) {
     //read arguments from user
-    for (size_t i = 0; i < inputsList.length; i++)
-    {
-        if((*(inputsList.tags+i)).array_len==1) {
-            char buffer[200];
-            printf("Podaj warto\230\206 pola %s (lub zostaw puste aby pomin\245\206): ",(*(inputsList.tags+i)).tag);
-            fgets(buffer,200,stdin);
-            (*(inputsList.tags+i)).target=atoi(buffer);
-        } else {
-            char buffer[200];
-            printf("Podaj warto\230ci tablicy %s (rozdzielaj\245c przecinkami lub zostaw puste aby pomin\245\206): ",(*(inputsList.tags+i)).tag);
-            fgets(buffer,200,stdin);
-            if(strlen(buffer)==1)
-                 (*(inputsList.tags+i)).target=-1;
-            (*(inputsList.tags+i)).add=strdup(buffer);
+        for (size_t i = 0; i < inputsList.length; i++)
+        {
+            if((*(inputsList.tags+i)).array_len==1) {
+                char buffer[200];
+                printf("Podaj warto\230\206 pola %s (lub zostaw puste aby pomin\245\206): ",(*(inputsList.tags+i)).tag);
+                fgets(buffer,200,stdin);
+                (*(inputsList.tags+i)).target=atoi(buffer);
+            } else {
+                char buffer[200];
+                printf("Podaj warto\230ci tablicy %s (rozdzielaj\245c przecinkami lub zostaw puste aby pomin\245\206): ",(*(inputsList.tags+i)).tag);
+                fgets(buffer,200,stdin);
+                if(strlen(buffer)==1)
+                    (*(inputsList.tags+i)).target=-1;
+                (*(inputsList.tags+i)).add=strdup(buffer);
+            }
         }
     }
     start = getMicrotime();
