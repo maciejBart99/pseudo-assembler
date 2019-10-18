@@ -3,21 +3,19 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include "structures.h"
-#include "functions.h"
+#include "declarations.h"
 
-extern struct TagsList inputsList;
-
-int main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
-    char fileName[256];
+    char fileName[STRING_BUFF_SIZE],outputs[STRING_BUFF_SIZE];
     char lastTag = ' ';
+    size_t i;
     bool hasSetFile = false;
-    bool hasSetOutput = false;
-    bool hasSetInput=false;
+    long time,start;
+    bool hasSetOutput=false;
     struct OrderList orders;
-    long start;
-    char outputs[200];
     struct CharArray oArray;
+    extern bool logRegisters;
 
     initMemory();
 
@@ -25,12 +23,15 @@ int main(int argc, char *argv[])
     {
         strcpy(fileName, argv[1]);
         hasSetFile = true;
-    } else {
-    //get input cmd arguments
-        for (size_t i = 1; i < argc; i++)
+    } 
+    else 
+        for (i = 1; i < argc; i++)
         {
             if (*argv[i] == '-')
-                lastTag = *(argv[i] + 1);
+            {
+                if(*(argv[i] + 1)=='r') logRegisters=true;
+                else lastTag = *(argv[i] + 1);
+            }
             else
             {
                 switch (lastTag)
@@ -41,41 +42,9 @@ int main(int argc, char *argv[])
                     break;
                 case 'o':
                     strcpy(outputs, argv[i]);
-                    hasSetOutput= true;
+                    hasSetOutput=true;
                     break;
-                case 'i':
-                    {
-                       struct CharArray ar=str_split(argv[i],';',100);
-
-                       for(size_t i=0;i<ar.length;i++) {
-                           char*tmp;
-                           struct Tag tag;
-                           struct CharArray ar2=str_split(*(ar.array+i),'=',2);
-
-                           tag.tag=*(ar.array+i);
-                        
-                            hasSetInput=true;
-                            tmp=*(ar2.array+1);
-
-                           if(*tmp=='[') {
-                                struct CharArray ar3;
-
-                                tmp++;
-                                tmp[strlen(tmp)-1]='\0';
-
-                                ar3=str_split(strdup(tmp),',',1000);
-                                tag.add=tmp;
-                                tag.array_len=ar3.length;
-                           } else {
-                               tag.array_len=1;
-                               tag.target=atoi(tmp);
-                           }
-
-
-                           *(inputsList.tags+inputsList.length)=tag;
-                           inputsList.length++;
-                       } 
-                    }
+                case 'i': parseInput(argv[i]);
                     break;
                 default:
                     break;
@@ -83,79 +52,64 @@ int main(int argc, char *argv[])
                 lastTag=' ';
             }
         }
-    }
-
 
     //check if user has selected file
-    if (!hasSetFile)
-    {
-        logError("Nie podano pliku!");
-        exit(1);
-    }
-
-    //check if user has set the desired output
-    if (!hasSetOutput)
-    {
-        printf("Podaj zmienne ktore maj\245 zosta\206 wypisane (rozdzielaj\245c przecinkiem, t:ZMIENNA wypisze ca\210a tablic\251, puste-pomi\344): ");
-        fgets(outputs,200,stdin);
-    }
+    if (!hasSetFile) logError("Nie podano pliku!",0);
 
     //compile program
     printf("Trwa kompilowanie pliku \253r\242d\210owego...\n");
 
     orders = parseScript(fileName);
 
-    if(!hasSetInput) {
-    //read arguments from user
-        for (size_t i = 0; i < inputsList.length; i++)
-        {
-            if((*(inputsList.tags+i)).array_len==1) {
-                char buffer[200];
-                printf("Podaj warto\230\206 pola %s (lub zostaw puste aby pomin\245\206): ",(*(inputsList.tags+i)).tag);
-                fgets(buffer,200,stdin);
-                (*(inputsList.tags+i)).target=atoi(buffer);
-            } else {
-                char buffer[200];
-                printf("Podaj warto\230ci tablicy %s (rozdzielaj\245c przecinkami lub zostaw puste aby pomin\245\206): ",(*(inputsList.tags+i)).tag);
-                fgets(buffer,200,stdin);
-                if(strlen(buffer)==1)
-                    (*(inputsList.tags+i)).target=-1;
-                (*(inputsList.tags+i)).add=strdup(buffer);
-            }
-        }
-    }
     start = getMicrotime();
 
     //start program
     printf("Start programu...\n");
-
     
     executeScript(orders);
 
-    //print the output
-    oArray=str_split(trim(outputs),',',100);
+    time=(long)((getMicrotime() - start) / 100);
 
-    for(int i=0;i<oArray.length;i++) {
-        size_t address;
-        struct CharArray ar=str_split(*(oArray.array+i),':',3);
+    if(hasSetOutput) printOutput(outputs);
 
-        if(ar.length==1){
-            address=getMemoryAddress(trim(*(ar.array)),-1);
-            printf("%s = %d\n",trim(*(oArray.array+i)),getMemoryValue(address,-1));
-        }else {
-            address=getMemoryAddress(trim(*(ar.array+1)),-1);
-            printf("%s = [",trim(*(ar.array+1)));
-            for(int j=getMemoryIndex(address);j<getMemoryRows(address);j++) {
-                printf("%d",getMemoryValueByIndex(j));
-
-                if(j+1!=getMemoryRows(address))
-                    printf(",");
-            }
-            printf("]\n");
-        }
-    }
-
-    printf("Wykonywanie programu trwa\210o %d ms i zako\344czy\210o si\251 sukcesem!\n",(long)((getMicrotime() - start) / 10));
+    printf("\nWykonywanie programu trwa\210o %d ms i zako\344czy\210o si\251 sukcesem!\n",time);
 
     return 0;
+}
+
+//parse string containing input varibles passed by user
+void parseInput(char * args)
+{
+    struct CharArray arForVaribles,arForEquals,arForTable;
+    struct Tag tag;
+    char*buffer;
+    size_t i;
+    extern struct TagsList inputsList;
+
+    arForVaribles=str_split(args,';',SPLIT_LIMIT);
+
+    for(i=0;i<arForVaribles.length;i++) 
+    {
+        arForEquals=str_split(arForVaribles.array[i],'=',2);
+
+        tag.hash=hash(arForEquals.array[i]);
+        buffer=arForEquals.array[1];
+
+        if(*buffer=='[') 
+        {
+            buffer++;
+            buffer[strlen(buffer)-1]='\0';
+            arForTable=str_split(strdup(buffer),',',SPLIT_LIMIT);
+            tag.add=buffer;
+            tag.array_len=arForTable.length;
+        } 
+        else 
+        {
+            tag.array_len=1;
+            tag.target=atoi(buffer);
+        }
+
+        inputsList.tags[inputsList.length]=tag;
+        inputsList.length++;
+    } 
 }

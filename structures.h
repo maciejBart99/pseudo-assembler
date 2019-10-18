@@ -8,7 +8,7 @@ struct CharArray {
 };
 
 struct OrderList {
-    struct Order** orders;
+    struct Order* orders;
     size_t length;
 };
 
@@ -19,9 +19,10 @@ struct Memory {
 
 struct Order
 {
-    char *command;
+    long command;
     char *tag;
     char *args;
+    size_t orginal_line;
 };
 
 struct TagsList {
@@ -30,7 +31,7 @@ struct TagsList {
 };
 
 struct Tag {
-    char *tag;
+    long hash;
     char * add;
     int target;
     size_t array_len;
