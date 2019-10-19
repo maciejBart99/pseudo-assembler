@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 
     if(hasSetOutput) printOutput(outputs);
 
-    printf("\nWykonywanie programu trwa\210o %d ms i zako\344czy\210o si\251 sukcesem!\n",time);
+    printf("\nWykonywanie programu trwa\210o ok. %d ms i zako\344czy\210o si\251 sukcesem!\n",time);
 
     return 0;
 }

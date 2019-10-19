@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "functions.h": "c"
+        "functions.h": "c",
+        "cstdbool": "cpp",
+        "cstdio": "cpp",
+        "structures.h": "c"
     }
 }

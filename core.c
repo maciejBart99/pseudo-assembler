@@ -223,8 +223,7 @@ void mathOperation(char* to,char* from, enum DataSource secondSource,enum Opeart
             break;
         case DIVIDE:   registers[addressA].value=valueA/valueB;
             break;
-        case COMPARE:   
-        registers[addressA].value=valueA-valueB;
+        case COMPARE:   registers[addressA].value=valueA-valueB;
             break;
     }
 
@@ -299,7 +298,7 @@ struct Order parseOrder(char *line,int index,int orginal)
     if(args.length==1) 
     {
         order.tag=trim(args.array[0]);
-        order.command=0;
+        order.command=(long)CMD_NONE;
         order.orginal_line=orginal;
         addJumpTag(trim(args.array[0]),index);
 
@@ -309,7 +308,7 @@ struct Order parseOrder(char *line,int index,int orginal)
     if(args.length==3)
     {
         order.tag=args.array[0];
-        order.command=hash(args.array[1]);
+        order.command=(enum Command)hash(args.array[1]);
         order.args=args.array[2];
         order.orginal_line=orginal;
 
@@ -319,7 +318,7 @@ struct Order parseOrder(char *line,int index,int orginal)
     {
         if(args.length==2) 
         {
-            order.command=hash(trim(args.array[0]));
+            order.command=(enum Command)hash(trim(args.array[0]));
             order.args=trim(args.array[1]);
             order.orginal_line=orginal;
         } 
@@ -474,9 +473,9 @@ size_t executeOrder(struct Order* order,int line,int orignalLine)
 
     arguments=str_split(strdup(order->args),',',SPLIT_LIMIT);
 
-    switch(order->command)
+    switch((enum Command)order->command)
     {
-        case 0: return line;
+        case CMD_NONE: return line;
         //memory allocation
         case CMD_DS: manageDataSection(order,arguments,orignalLine); break;
         case CMD_DC: manageDataSection(order,arguments,orignalLine); break;
