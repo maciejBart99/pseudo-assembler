@@ -20,9 +20,9 @@ struct CharArray
 //numerical cmd representation
 struct Order
 {
-    unsigned long commandHash;
+    int commandHash;
     unsigned long tagHash;
-    int args[4];
+    int args[3];
     int orginal_line;
 };
 struct OrderList 

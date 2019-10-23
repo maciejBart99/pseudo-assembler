@@ -51,7 +51,7 @@ int addLabel(unsigned long hash,size_t length,short size);
 
 struct Label* getLabel(unsigned long hash) ;
 
-void addJumpLabel(long hash,short size);
+void addJumpLabel(long hash,int address,short size);
 
 struct Label* getJumpLabel(long hash);
 

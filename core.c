@@ -65,9 +65,8 @@ struct Label* getLabel(unsigned long hash)
     return NULL;
 }
 
-void addJumpLabel(long hash,short size)
+void addJumpLabel(long hash,int address,short size)
 {
-    short address;
     extern struct Core core;
 
     struct Label newLabel;
@@ -75,12 +74,7 @@ void addJumpLabel(long hash,short size)
     newLabel.key.hash=hash;
     newLabel.length=1;
 
-    if(core.jumpLabels.length>0)
-    {
-        newLabel.previous=core.jumpLabels.first;
-        address=newLabel.value.target + (size * core.jumpLabels.first->length);
-    }
-    else address=0;
+    if(core.jumpLabels.length>0) newLabel.previous=core.jumpLabels.first;
 
     newLabel.value.target=address;
 
@@ -98,10 +92,8 @@ struct Label* getJumpLabel(long hash)
     for(i=0;i<core.jumpLabels.length;i++)
     {
         if(previous->key.hash==hash) return previous;
-
         previous=previous->previous;
     }
-
     return NULL;
 }
 
@@ -153,7 +145,13 @@ void mathOperation(struct Order* order, enum DataSource secondSource,enum Opeart
 
     valueA=getRegisterValue(order->args[0],order->orginal_line);
 
-    if(secondSource==MEMORY) valueB=getMemoryValue(order->args[1]);
+    if(secondSource==MEMORY)
+    {
+        if(order->args[2]>0) addressB=order->args[1]+getRegisterValue(order->args[2]-1,order->orginal_line);
+        else addressB=order->args[1];  
+
+        valueB=getMemoryValue(addressB); 
+    }
     else valueB=getRegisterValue(order->args[1],order->orginal_line);
 
     switch (type)
@@ -184,11 +182,7 @@ void transferData(struct Order *order, enum TransferType type)
 
     valueA=getMemoryValue(order->args[0]);
 
-    if(type==RtoM||type==MtoR)
-    {
-        if(order->args[2]>0) addressB=getRegisterValue(order->args[2]-1,order->orginal_line);
-        else addressB=order->args[1];
-    }
+    if((type==RtoM||type==MtoR)&&order->args[2]>0) addressB=order->args[1]+getRegisterValue(order->args[2]-1,order->orginal_line);
     else addressB=order->args[1];
 
     switch (type)
@@ -233,10 +227,7 @@ struct Order parseOrder(char *line,int index,int orginal)
 
         if(argsByStar.length>2||argsByParent.length>2||argsByComa.length>2) logError("B\210\245d sk\210adni!",orginal);
 
-        if(argsByComa.length==2)
-        {
-            order.args[0]=atoi(trim(argsByComa.array[0]));
-        }
+        if(argsByComa.length==2) order.args[0]=atoi(trim(argsByComa.array[0]));
         else if(argsByStar.length==2) order.args[0]=atoi(trim(argsByStar.array[0]));
         else order.args[2]=0;
 
@@ -244,13 +235,22 @@ struct Order parseOrder(char *line,int index,int orginal)
 
         if(argsByParent.length==1) 
         {
-            order.args[tmp]=(isNumeric(argsByParent.array[0]))?atoi(trim(argsByParent.array[1])):((argsByComa.length==2)?getLabel(hash(trim(argsByParent.array[0])))->value.target:hash(trim(argsByParent.array[0])));
+            if(isNumeric(argsByParent.array[0]))
+            {
+                order.args[tmp]=atoi(trim(argsByParent.array[0]));
+                order.args[2]=0;
+            }
+            else
+            {
+                order.args[tmp]=(argsByComa.length==2)?getLabel(hash(trim(argsByParent.array[0])))->value.target:hash(trim(argsByParent.array[0]));
+                if(argsByComa.length==2) order.args[2]=MEMORY_REGISTER+1;
+            }
             order.args[tmp+1]=0;
         }
         else
         {
             argsByParent.array[1][strlen(argsByParent.array[1])-1]='\0';
-            order.args[tmp]=(isNumeric(argsByParent.array[0]))?atoi(argsByParent.array[0]):hash(argsByParent.array[0]);
+            order.args[tmp]=(isNumeric(argsByParent.array[0]))?atoi(trim(argsByParent.array[0])):((argsByComa.length==2)?getLabel(hash(trim(argsByParent.array[0])))->value.target:hash(trim(argsByParent.array[0])));
             order.args[tmp+1]=atoi(argsByParent.array[1])+1;
         }
 
@@ -260,14 +260,14 @@ struct Order parseOrder(char *line,int index,int orginal)
             labelSize=(argsByStar.length>1)?atoi(trim(argsByStar.array[0])):1;
 
             if((enum Command)order.commandHash==CMD_DC||(enum Command)order.commandHash==CMD_DS) order.tagHash=addLabel(order.tagHash,labelSize,4);
-            else addJumpLabel(order.tagHash,sizeof(struct Label));
+            else addJumpLabel(order.tagHash,index*sizeof(struct Order),sizeof(struct Order));
         }
         else order.tagHash=0;
     }
     else
     {
         order.tagHash=hash(trim(argsBySpace.array[0]));
-        addJumpLabel(order.tagHash,sizeof(struct Label));
+        addJumpLabel(order.tagHash,index*sizeof(struct Order),sizeof(struct Order));
     }
     return order;
 }
@@ -380,7 +380,7 @@ int executeOrder(struct Order* order,int cmdAddress)
         
         case CMD_C: mathOperation(order,MEMORY,COMPARE); break;
         case CMD_CR: mathOperation(order,REGISTER,COMPARE); break;
-        //data tranfer
+        //data transfer
         case CMD_L: transferData(order,MtoR); break;
         case CMD_LR: transferData(order,RtoR); break;
         case CMD_ST: transferData(order,RtoM); break;
