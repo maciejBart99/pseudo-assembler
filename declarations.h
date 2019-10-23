@@ -1,9 +1,14 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<stdbool.h>
 #ifndef declarations
 #define declarations
-#endif
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/time.h>
+#include <string.h>
+#include <stdbool.h>
+#include <ctype.h>
+#include <math.h>
+#include "types.h"
+
 
 //def
 #define TAGS_BUFF_SIZE 10
@@ -22,15 +27,6 @@
 #define STRING_BUFF_SIZE 200
 #define CMD_LENGTH 3
 #define HASH_BASE 1
-
-//enums def
-enum OpeartionType{ADD,SUBSTRACT,MULTIPLY,DIVIDE,COMPARE};
-
-enum TransferType{MtoR,RtoM,RtoR,AtoR};
-
-enum DataSource {MEMORY,REGISTER};
-
-enum Command {CMD_A=98,CMD_AR=3316,CMD_LA=3662,CMD_S=116,CMD_SR=3910,CMD_M=110,CMD_MR=3712,CMD_D=101,CMD_DR=3415,CMD_L=109,CMD_ST=3912,CMD_LR=3679,CMD_DS=3416,CMD_DC=3400,CMD_J=107,CMD_JZ=3621,CMD_JP=3611,CMD_JN=3609,CMD_C=100,CMD_CR=3382,CMD_NONE=0};
 
 //functions
 struct OrderList parseScript(char *fileName);
@@ -51,26 +47,38 @@ char *trim(char *str);
 
 bool isNumeric(char *str);
 
-void clearMemory(struct OrderList listToClear);
+int addLabel(unsigned long hash,size_t length,short size);
 
-long getMemoryAddress(char * tag,int line);
+struct Label* getLabel(unsigned long hash) ;
 
-long getMemoryValue(size_t addressA,int line);
+void addJumpLabel(long hash,short size);
 
-size_t getMemoryRows(size_t addressA);
+struct Label* getJumpLabel(long hash);
 
-size_t getMemoryIndex(size_t addressA);
+int getMemoryValue(int address);
 
-long getMemoryValueByIndex(size_t index);
+void setMemoryValue(int address,int value);
 
-void initMemory();
+int getRegisterValue(short address,int line);
+
+void setRegisterValue(short address,int value,int line);
+
+short getRegisterAdress(short name,int line) ;
+
+short getState();
+
+void updateStateRegister(short value);
 
 void printOutput(char* outputs);
 
-long hash(char *str);
+unsigned long hash(char *str);
 
 void printRegisterChange(short reg_num);
 
 void parseInput(char * args);
 
 char * decToHexU2(long num);
+
+long max(long a,long b);
+
+#endif

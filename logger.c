@@ -1,8 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include "structures.h"
-#include <string.h>
-#include <math.h>
 #include "declarations.h"
 
 bool logRegisters=false;
@@ -41,7 +36,6 @@ char * decToHexU2(long num)
 void logError(char*message,int line) 
 {
     char text[200];
-    FILE *fptr;
 
     sprintf(text,"B\210\245d w %d lini: %s \n",line,message);
     printf(text);
@@ -51,41 +45,41 @@ void logError(char*message,int line)
 //function to print output after program is done
 void printOutput(char* outputs) 
 {
-    struct CharArray oArray=str_split(trim(outputs),',',100);
+    int i,j;
+    struct Label* tmpLabel;
+    struct CharArray splitByComa,splitByDot;
+    
+    splitByComa=str_split(outputs,',',100);
 
-    for(int i=0;i<oArray.length;i++) 
+    for(i=0;i<splitByComa.length;i++) 
     {
-        size_t address;
-        struct CharArray ar=str_split(oArray.array[i],':',3);
+        splitByDot=str_split(strdup(splitByComa.array[i]),':',2);
+        tmpLabel=getLabel(hash(splitByDot.array[splitByDot.length-1]));
 
-        if(ar.length==1)
+        if(splitByDot.length==2)
         {
-            address=getMemoryAddress(trim(ar.array[0]),-1);
-            printf("\n%s = %d\n",trim(oArray.array[i]),getMemoryValue(address,0));
-        }
-        else 
-        {
-            address=getMemoryAddress(trim(ar.array[1]),-1);
-            printf("\n%s = [",trim(ar.array[1]));
-            for(int j=getMemoryIndex(address);j<getMemoryRows(address);j++) 
+            printf("\n%s = [",splitByDot.array[splitByDot.length-1]);
+
+            for(j=0;j<tmpLabel->length;j++)
             {
-                printf("%d",getMemoryValueByIndex(j));
+                printf("%d",getMemoryValue(tmpLabel->value.target+(sizeof(int)*j)));
 
-                if(j+1!=getMemoryRows(address)) printf(",");
+                if(j+1!=tmpLabel->length) printf(",");
             }
+
             printf("]\n");
         }
+        else printf("\n%s = %d\n",splitByDot.array[splitByDot.length-1],getMemoryValue(tmpLabel->value.target));
     }
 }
 
 //print information about register's changes
 void printRegisterChange(short reg_num) 
 {
-    extern struct Register registers[];
     extern bool logRegisters;
     
     if(logRegisters) {
-        printf("\nWarto\230\206 rejestru %d zosta\210a zmieniona:\n",reg_num);
-        printf("Nowa warto\230\206(dec): %d, (u2-hex): 0x%s\n",registers[reg_num].value,decToHexU2(registers[reg_num].value));
+        printf("\n\nWarto\230\206 rejestru %d zosta\210a zmieniona:\n",reg_num);
+        printf("Nowa warto\230\206(dec): %d, (u2-hex): 0x%s\n",getRegisterValue(reg_num,0),decToHexU2(getRegisterValue(reg_num,0)));
     }
 }

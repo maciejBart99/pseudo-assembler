@@ -1,8 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include "structures.h"
 #include "declarations.h"
 
 int main(int argc, char **argv)
@@ -16,8 +11,6 @@ int main(int argc, char **argv)
     struct OrderList orders;
     struct CharArray oArray;
     extern bool logRegisters;
-
-    initMemory();
 
     if(argc==2)
     {
@@ -36,18 +29,20 @@ int main(int argc, char **argv)
             {
                 switch (lastTag)
                 {
-                case 'f':
-                    strcpy(fileName, argv[i]);
-                    hasSetFile = true;
-                    break;
-                case 'o':
-                    strcpy(outputs, argv[i]);
-                    hasSetOutput=true;
-                    break;
-                case 'i': parseInput(argv[i]);
-                    break;
-                default:
-                    break;
+                    case 'f':
+                        strcpy(fileName, argv[i]);
+                        hasSetFile = true;
+                        break;
+                    case 'o':
+                        strcpy(outputs, argv[i]);
+                        hasSetOutput=true;
+                        break;
+                    case 'i': parseInput(argv[i]);
+                        break;
+                    case ' ': 
+                        strcpy(fileName, argv[i]);
+                        hasSetFile = true;
+                        break;
                 }
                 lastTag=' ';
             }
@@ -57,7 +52,7 @@ int main(int argc, char **argv)
     if (!hasSetFile) logError("Nie podano pliku!",0);
 
     //compile program
-    printf("Trwa kompilowanie pliku \253r\242d\210owego...\n");
+    printf("Trwa przetwarzanie pliku \253r\242d\210owego...\n");
 
     orders = parseScript(fileName);
 
@@ -81,10 +76,10 @@ int main(int argc, char **argv)
 void parseInput(char * args)
 {
     struct CharArray arForVaribles,arForEquals,arForTable;
-    struct Tag tag;
-    char*buffer;
-    size_t i;
-    extern struct TagsList inputsList;
+    struct Label *tmpLabel;
+    extern struct Core core;
+    char *buffer;
+    int i;
 
     arForVaribles=str_split(args,';',SPLIT_LIMIT);
 
@@ -92,7 +87,9 @@ void parseInput(char * args)
     {
         arForEquals=str_split(arForVaribles.array[i],'=',2);
 
-        tag.hash=hash(arForEquals.array[i]);
+        tmpLabel=malloc(sizeof(struct Label));
+
+        tmpLabel->key.hash=hash(arForEquals.array[0]);
         buffer=arForEquals.array[1];
 
         if(*buffer=='[') 
@@ -100,16 +97,17 @@ void parseInput(char * args)
             buffer++;
             buffer[strlen(buffer)-1]='\0';
             arForTable=str_split(strdup(buffer),',',SPLIT_LIMIT);
-            tag.add=buffer;
-            tag.array_len=arForTable.length;
+            tmpLabel->value.text=buffer;
+            tmpLabel->length=arForTable.length;
         } 
         else 
         {
-            tag.array_len=1;
-            tag.target=atoi(buffer);
+            tmpLabel->length=1;
+            tmpLabel->value.target=atoi(buffer);
         }
 
-        inputsList.tags[inputsList.length]=tag;
-        inputsList.length++;
+        if(core.userInput.length>0) tmpLabel->previous=core.userInput.first;
+        core.userInput.first=tmpLabel;
+        core.userInput.length++;
     } 
 }

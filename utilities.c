@@ -1,16 +1,7 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/time.h>
-#include <string.h>
-#include <stdbool.h>
-#include <ctype.h>
-#include <assert.h>
-#include <math.h>
-#include "structures.h"
 #include "declarations.h"
 
 //generate a hash for a string
-long hash(char *str)
+unsigned long hash(char *str)
 {
     unsigned long hash = HASH_BASE;
     int c;
@@ -187,4 +178,11 @@ bool checkIfKeyWord(char* word)
         if(strcmp(keyWords[i],word)==0) return true;
         
     return false;
+}
+
+//return max of two values
+long max(long a,long b)
+{
+    if(a>b) return a;
+    else return b;
 }

@@ -1,332 +1,274 @@
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include "structures.h"
 #include "declarations.h"
-#include <math.h>
 
-//globals
-struct TagsList jumpTags = {0,NULL};
-struct TagsList memoryTags = {0,NULL};
-struct Memory memory={NULL,0};
-struct Register registers[]={{0,0},{1,0},{2,0},{3,0},{4,0},{5,0},{6,0},{7,0},{8,0},{9,0},{10,0},{11,0},{12,0},{13,0},{14,0},{15,0}};
-short stateRegisterValue=0;
-struct TagsList inputsList={0,NULL};
+//global
+struct Core core={
+    {0,NULL}, //init memory labels
+    {0,NULL}, //init jump labels
+    {0,NULL}, //init user input
+    NULL, //memory prt
+    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, //registers
+    0 //state register
+};
 
 //functions
-void addJumpTag(char* tag,size_t target) 
+int addLabel(unsigned long hash,size_t length,short size)
 {
-    struct Tag tagS;
-    extern struct TagsList jumpTags;
+    int address,i;
+    extern struct Core core;
+    struct Label newLabel,*previous;
 
-    tagS.target=target;
-    tagS.hash=hash(tag);
+    newLabel.key.hash=hash;
+    newLabel.length=length;
 
-    if(jumpTags.length==0) 
+    if(core.labels.length>0)
     {
-        jumpTags.tags[0]=tagS;
-        jumpTags.length=1;
+        newLabel.previous=core.labels.first;
+        address=core.labels.first->value.target + (4 * core.labels.first->length);
     }
-    else
+    else address=0;
+
+    newLabel.value.target=address;
+
+    core.labels.first=(struct Label*)malloc(sizeof(struct Label));
+    *core.labels.first=newLabel;
+    core.labels.length++;
+
+    //check if the value of this cell has been typed by the user
+    if(core.userInput.length>0)
     {
-        if(jumpTags.length % TAGS_BUFF_SIZE==0) jumpTags.tags=realloc(jumpTags.tags,(jumpTags.length + TAGS_BUFF_SIZE) * sizeof(struct Tag));
-
-        jumpTags.tags[jumpTags.length]=tagS;
-        jumpTags.length++;
-    }
-}
-
-void addMemoryTag(char* tag,size_t target,size_t rows) 
-{
-    struct Tag tagS;
-    extern struct TagsList memoryTags;
-
-    tagS.target=target;
-    tagS.hash=hash(tag);
-    tagS.array_len=rows;
-
-    if(memoryTags.length==0) 
-    {
-        memoryTags.tags[0]=tagS;
-        memoryTags.length=1;
-    }
-    else
-    {
-        if(memoryTags.length % TAGS_BUFF_SIZE==0) memoryTags.tags=realloc(memoryTags.tags,(memoryTags.length + TAGS_BUFF_SIZE) * sizeof(struct Tag));
-
-        memoryTags.tags[memoryTags.length]=tagS;
-        memoryTags.length++;
-    }
-
-}
-
-size_t allocateMemory(char* tag,long value,short size,bool makeTag,size_t rows) 
-{
-    size_t address;
-    struct MemoryCell cell;
-    extern struct TagsList memoryTags;
-    extern struct Memory memory;
-
-    if(memoryTags.length==0) address=0;
-    else address=memory.cells[memory.length-1].address+memory.cells[memory.length-1].size;
-
-    if(pow(2,(8*size)-1)<abs(value)) logError("Zbyt duza liczba!",rows);
-
-    cell.size=size;
-    cell.value=value;
-    cell.address=address;
-
-    if(memory.length==0) 
-    {
-        memory.cells=malloc(sizeof(struct Memory));
-        memory.cells[0]=cell;
-        memory.length=1;
-    }
-    else
-    {
-        memory.cells=realloc(memory.cells,(memory.length+1) * sizeof(struct Memory));
-        memory.cells[memory.length]=cell;
-        memory.length++;
-    }
-
-    if(makeTag) addMemoryTag(tag,address,rows);
-
-    return cell.address;
-}
-
-long getMemoryAddress(char * tag,int line) 
-{
-    size_t address;
-    long hashV;
-    size_t i;
-    extern struct TagsList memoryTags;
-
-    hashV=hash(tag);
-    
-    for(i=0;i<memoryTags.length;i++) 
-        if(hashV==memoryTags.tags[i].hash) return memoryTags.tags[i].target;
-
-    logError("Nie odnaleziono kom\242rki pami\251ci o podanej etykiecie!",line);
-}
-
-size_t getMemoryRows(size_t addressA) 
-{   
-    extern struct TagsList memoryTags;
-    size_t i;
-
-    for(i=0;i<memory.length;i++) 
-        if(memoryTags.tags[i].target==addressA) return memoryTags.tags[i].array_len;
-    
-    logError("Nieodnaleziono podanego adresu!",0);
-}
-
-size_t getMemoryIndex(size_t addressA) 
-{   
-    extern struct Memory memory;
-    size_t i;
-
-    for(i=0;i<memoryTags.length;i++) 
-        if(memory.cells[i].address==addressA) return i;
-
-    logError("Nieodnaleziono podanego adresu!",0);
-}
-
-long getMemoryValue(size_t addressA,int line) 
-{   
-    extern struct Memory memory;
-    size_t i;
-
-    for(i=0;i<memory.length;i++) 
-        if(memory.cells[i].address==addressA) return memory.cells[i].value;
-
-    return 0;
-}
-
-long getMemoryValueByIndex(size_t index) 
-{  
-    extern struct Memory memory;
-
-    return (memory.cells[index]).value;
-}
-
-size_t getJumpTarget(char * tag,int line) 
-{   
-    long hashV;
-    size_t i;
-    extern struct TagsList jumpTags;
-
-    hashV=hash(tag);
-
-    for(i=0;i<jumpTags.length;i++) 
-        if(hashV==jumpTags.tags[i].hash) return jumpTags.tags[i].target;
-
-    logError("Nie odnaleziono wskazanej etykiety!",line);
-}
-
-void setMemoryValue(size_t addressA,long value,int line) 
-{   
-    extern struct Memory memory;
-    size_t i;
-
-    for(i=0;i<memory.length;i++) 
-    {
-        if(memory.cells[i].address==addressA) 
+        previous=core.userInput.first;
+        for(i=0;i<core.userInput.length;i++)
         {
-            memory.cells[i].value=value;
-            return;
+            if(previous->key.hash==hash)
+            {
+                previous->key.address=address;
+                break;
+            }
         }
     }
-
-    logError("Nie odnaleziono kom\242rki pami\251ci o podanym adresie!",line);
+    return address;
 }
 
-long getRegisterAdress(char*name,int line) 
+struct Label* getLabel(unsigned long hash) 
 {
-    short tmp;
+    size_t i;
+    extern struct Core core;
+    struct Label* previous=core.labels.first;
 
-    if(isNumeric(name)) 
+    for(i=0;i<core.labels.length;i++)
     {
-        tmp=atoi(name);
-
-        if(tmp<FIRST_REGISTER||tmp>LAST_REGISTER) logError("Odwo\210anie do rejestru musi si\251 odbywa\206 poprzez liczb\251 od 0 do 15!",line);
-        else return tmp;
-    } 
-    else logError("Odwo\210anie do rejestru musi si\251 odbywa\206 poprzez liczb\251 od 0 do 15!",line);
-}
-
-void mathOperation(char* to,char* from, enum DataSource secondSource,enum OpeartionType type,int line) 
-{
-    int valueA,valueB,addressA,addressB;
-    extern struct Register registers[];
-
-    to=trim(to);
-    from=trim(from);
-
-    addressA=getRegisterAdress(to,line);
-    valueA=registers[addressA].value;
-
-    if(secondSource==MEMORY) valueB=getMemoryValue(getMemoryAddress(from,line),line);
-    else 
-    {
-        addressB=getRegisterAdress(from,line);
-        valueB=registers[addressB].value;
+        if(previous->key.hash==hash) return previous;
+      
+        previous=previous->previous;
     }
+
+    return NULL;
+}
+
+void addJumpLabel(long hash,short size)
+{
+    short address;
+    extern struct Core core;
+
+    struct Label newLabel;
+
+    newLabel.key.hash=hash;
+    newLabel.length=1;
+
+    if(core.jumpLabels.length>0)
+    {
+        newLabel.previous=core.jumpLabels.first;
+        address=newLabel.value.target + (size * core.jumpLabels.first->length);
+    }
+    else address=0;
+
+    newLabel.value.target=address;
+
+    core.jumpLabels.first=(struct Label*)malloc(sizeof(struct Label));
+    *core.jumpLabels.first=newLabel;
+    core.jumpLabels.length++;
+}
+
+struct Label* getJumpLabel(long hash) 
+{
+    size_t i;
+    extern struct Core core;
+    struct Label* previous=core.jumpLabels.first;
+
+    for(i=0;i<core.jumpLabels.length;i++)
+    {
+        if(previous->key.hash==hash) return previous;
+
+        previous=previous->previous;
+    }
+
+    return NULL;
+}
+
+int getMemoryValue(int address)
+{
+    extern struct Core core;
+    return core.memory[address/sizeof(int)];
+}
+
+void setMemoryValue(int address,int value)
+{
+    extern struct Core core;
+    core.memory[address/sizeof(int)]=value;
+}
+
+int getRegisterValue(short address,int line)
+{
+    extern struct Core core;
+    return core.registers[getRegisterAdress(address,line)];
+}
+
+void setRegisterValue(short address,int value,int line)
+{
+    extern struct Core core;
+    core.registers[getRegisterAdress(address,line)]=value;
+}
+
+short getState()
+{
+    extern struct Core core;
+    return core.stateRegisterValue;
+}
+
+void updateStateRegister(short value)
+{
+    extern struct Core core;
+    core.stateRegisterValue=value;
+}
+
+short getRegisterAdress(short name,int line) 
+{
+    if(name<FIRST_REGISTER||name>LAST_REGISTER) logError("Odwo\210anie do rejestru musi si\251 odbywa\206 poprzez liczb\251 od 0 do 15!",line);
+    else return name;
+}
+
+void mathOperation(struct Order* order, enum DataSource secondSource,enum OpeartionType type) 
+{
+    int valueA,valueB,addressB;
+
+    valueA=getRegisterValue(order->args[0],order->orginal_line);
+
+    if(secondSource==MEMORY) valueB=getMemoryValue(order->args[1]);
+    else valueB=getRegisterValue(order->args[1],order->orginal_line);
 
     switch (type)
     {
-        case ADD:   registers[addressA].value=valueB+valueA;
+        case ADD:   setRegisterValue(order->args[0],valueB+valueA,order->orginal_line);
             break;
-        case SUBSTRACT:   registers[addressA].value=valueA-valueB;
+        case SUBSTRACT:  setRegisterValue(order->args[0],valueB-valueA,order->orginal_line);
             break;
-        case MULTIPLY:   registers[addressA].value=valueB*valueA;
+        case MULTIPLY:  setRegisterValue(order->args[0],valueB*valueA,order->orginal_line);
             break;
-        case DIVIDE:   registers[addressA].value=valueA/valueB;
+        case DIVIDE:  setRegisterValue(order->args[0],valueA/valueB,order->orginal_line);
             break;
-        case COMPARE:   registers[addressA].value=valueA-valueB;
+        case COMPARE:   setRegisterValue(order->args[0],valueA-valueB,order->orginal_line);
             break;
     }
 
-    if(registers[addressA].value>0) stateRegisterValue=STATE_POSITIVE;
-    else if(registers[addressA].value<0) stateRegisterValue=STATE_NEGATIVE;
-    else stateRegisterValue=STATE_ZERO;
-    
+    if(getRegisterValue(order->args[0],order->orginal_line)>0) updateStateRegister(STATE_POSITIVE);
+    else if(getRegisterValue(order->args[0],order->orginal_line)<0) updateStateRegister(STATE_NEGATIVE);
+    else updateStateRegister(STATE_ZERO);
 
-    if(type==COMPARE) registers[addressA].value=valueA;
-    else  printRegisterChange(addressA);
-    
+    if(type==COMPARE) setRegisterValue(order->args[0],valueA,order->orginal_line);
+    else printRegisterChange(order->args[0]);
 }
 
-void transferData(char* to,char* from, enum TransferType type,int line) 
+void transferData(struct Order *order, enum TransferType type) 
 {
-    int valueA,valueB,addressA,addressB;
-    struct CharArray ar;
-    char * buffer;
-    extern struct Register registers[];
+    int valueA,valueB,addressB;
 
-    to=trim(to);
-    from=trim(from);
+    valueA=getMemoryValue(order->args[0]);
 
-    addressA=getRegisterAdress(to,line);
-
-    if(type==MtoR||type==RtoM) 
+    if(type==RtoM||type==MtoR)
     {
-        ar=str_split(strdup(trim(from)),'(',2);
-
-        if(ar.length==2) 
-        {
-            buffer=ar.array[1];
-            buffer[strlen(buffer)-1]='\0';
-
-            addressB=atoi(ar.array[0])+registers[getRegisterAdress(buffer,line)].value;
-        } 
-        else addressB=getMemoryAddress(from,line);
+        if(order->args[2]>0) addressB=getRegisterValue(order->args[2]-1,order->orginal_line);
+        else addressB=order->args[1];
     }
+    else addressB=order->args[1];
 
     switch (type)
     {
-        case MtoR: registers[addressA].value=getMemoryValue(addressB,line);
-                    printRegisterChange(addressA);
+        case MtoR: setRegisterValue(order->args[0],getMemoryValue(addressB),order->orginal_line);
+                    printRegisterChange(order->args[0]);
             break;
-        case RtoM: setMemoryValue(addressB,registers[addressA].value,line);
+        case RtoM: setMemoryValue(addressB,getRegisterValue(order->args[0],order->orginal_line));
             break;
-        case RtoR: 
-                    addressB=getRegisterAdress(from,line);
-                    registers[addressA]=registers[addressB];
-                    printRegisterChange(addressA);
+        case RtoR: setRegisterValue(order->args[0],getRegisterValue(order->args[1],order->orginal_line),order->orginal_line);
+                    printRegisterChange(order->args[0]);
             break;
-        case AtoR: registers[addressA].value=getMemoryAddress(from,line);
+        case AtoR: setRegisterValue(order->args[0],order->args[1],order->orginal_line);
+                    printRegisterChange(order->args[0]);
             break;
     }
 }
 
 struct Order parseOrder(char *line,int index,int orginal) 
 {
-    struct CharArray args;
+    struct CharArray argsBySpace,argsByComa,argsByParent,argsByStar;
     struct Order order;
-    struct Tag tag;
-    int elementsCount;
-    struct CharArray arForDS;
-    size_t tmpSize;
+    size_t labelSize;
+    long tmp,tmpHash;
 
-    args=str_split(strdup(line),' ',3);
+    argsBySpace=str_split(strdup(line),' ',3);
 
-    if(checkIfKeyWord(args.array[0])) args=str_split(line,' ',2);
+    if(checkIfKeyWord(argsBySpace.array[0])) argsBySpace=str_split(line,' ',2);
 
-    if(args.length>3) logError("B\210\245d sk\210adni!",orginal);
+    if(argsBySpace.length>3) logError("B\210\245d sk\210adni!",orginal);
 
-    if(args.length==1) 
+    order.commandHash=(argsBySpace.length>1)?hash(trim(argsBySpace.array[argsBySpace.length-2])):(unsigned long)CMD_NONE;
+    order.orginal_line=orginal;
+
+    if(argsBySpace.length>1)
     {
-        order.tag=trim(args.array[0]);
-        order.command=(long)CMD_NONE;
-        order.orginal_line=orginal;
-        addJumpTag(trim(args.array[0]),index);
+        argsByComa=str_split(trim(argsBySpace.array[argsBySpace.length-1]),',',2);
 
-        return order;
-    }
+        argsByStar=str_split(trim(argsByComa.array[argsByComa.length-1]),'*',2);
 
-    if(args.length==3)
-    {
-        order.tag=args.array[0];
-        order.command=(enum Command)hash(args.array[1]);
-        order.args=args.array[2];
-        order.orginal_line=orginal;
+        argsByParent=str_split(trim(argsByStar.array[argsByStar.length-1]),'(',2);
 
-        if(order.command!=CMD_DS&&order.command!=CMD_DC) addJumpTag(order.tag,index);
-    } 
-    else if(checkIfKeyWord(args.array[0])) 
-    {
-        if(args.length==2) 
+        if(argsByStar.length>2||argsByParent.length>2||argsByComa.length>2) logError("B\210\245d sk\210adni!",orginal);
+
+        if(argsByComa.length==2)
         {
-            order.command=(enum Command)hash(trim(args.array[0]));
-            order.args=trim(args.array[1]);
-            order.orginal_line=orginal;
-        } 
-        else logError("B\210\245d sk\210adni!",orginal);
+            order.args[0]=atoi(trim(argsByComa.array[0]));
+        }
+        else if(argsByStar.length==2) order.args[0]=atoi(trim(argsByStar.array[0]));
+        else order.args[2]=0;
 
+        tmp=max(argsByComa.length,argsByStar.length)-1;
+
+        if(argsByParent.length==1) 
+        {
+            order.args[tmp]=(isNumeric(argsByParent.array[0]))?atoi(trim(argsByParent.array[1])):((argsByComa.length==2)?getLabel(hash(trim(argsByParent.array[0])))->value.target:hash(trim(argsByParent.array[0])));
+            order.args[tmp+1]=0;
+        }
+        else
+        {
+            argsByParent.array[1][strlen(argsByParent.array[1])-1]='\0';
+            order.args[tmp]=(isNumeric(argsByParent.array[0]))?atoi(argsByParent.array[0]):hash(argsByParent.array[0]);
+            order.args[tmp+1]=atoi(argsByParent.array[1])+1;
+        }
+
+        if(argsBySpace.length==3)
+        {
+            order.tagHash=hash(argsBySpace.array[0]);
+            labelSize=(argsByStar.length>1)?atoi(trim(argsByStar.array[0])):1;
+
+            if((enum Command)order.commandHash==CMD_DC||(enum Command)order.commandHash==CMD_DS) order.tagHash=addLabel(order.tagHash,labelSize,4);
+            else addJumpLabel(order.tagHash,sizeof(struct Label));
+        }
+        else order.tagHash=0;
     }
-    else logError("B\210\245d sk\210adni!",orginal);
-
+    else
+    {
+        order.tagHash=hash(trim(argsBySpace.array[0]));
+        addJumpLabel(order.tagHash,sizeof(struct Label));
+    }
     return order;
 }
 
@@ -357,7 +299,7 @@ struct OrderList parseScript(char *fileName)
 
         if(trim(line)[0]=='/'&&trim(line)[1]=='/') continue;
 
-        if(resultLength % ORDERS_CHUNK==0&&resultList!=0) resultList=realloc(resultList,(resultLength + ORDERS_CHUNK)*sizeof(struct Order *));
+        if(resultLength % ORDERS_CHUNK==0&&resultList!=0) resultList=realloc(resultList,(resultLength + ORDERS_CHUNK)*sizeof(struct Order));
 
         if(strlen(trim(line))>2) 
         {
@@ -373,155 +315,103 @@ struct OrderList parseScript(char *fileName)
     return list;
 }
 
-void initMemory()
-{
-    extern struct TagsList jumpTags;
-    extern struct TagsList memoryTags;
-    extern struct TagsList inputsList;
-
-    //alocate memory for address linkers
-    jumpTags.tags=malloc(sizeof(struct Tag)*TAGS_BUFF_SIZE);
-    memoryTags.tags=malloc(sizeof(struct Tag)*TAGS_BUFF_SIZE);
-    inputsList.tags =malloc(sizeof(struct Tag)*TAGS_BUFF_SIZE);
-}
-
 //function to handle DS DC instructions
-void manageDataSection(struct Order* order,struct CharArray args,int line) 
+void manageDataSection(struct Order* order) 
 {
-    size_t up,i;
-    bool hasTag=false;
-    struct Tag tag;
-    struct CharArray arForDC,arForTab,arForInput;
-    char * dType,*value;  
-    short size;
-    long valueInt,hashV;
+    int value,up,i,j;
+    struct Label *label;
+    struct CharArray arByComa;
+    bool hasFound=false;
+    extern struct Core core;
 
-    arForTab=str_split(args.array[0],'*',3);
+    if(order->args[2]==0) up=1;
+    else up=order->args[0];
 
-    if(checkIfKeyWord(order->tag)) logError("Z/245a nazwa zmiennej!",line);
+    if(up<1) logError("Nie mo\276na utworzy\206 tablicy o podanym rozmiarze!",order->orginal_line);
 
-    //check if array
-    if(arForTab.length==1)
+    if(order->args[2]==0) value=order->args[1]-1;
+    else value=order->args[2]-1;
+
+    //check if this cell has been typed by user
+    if(core.userInput.length>0)
     {
-        arForDC=str_split(trim(arForTab.array[0]),'(',3);
-        up=1;
-    }
-    else
-    {
-        arForDC=str_split(trim(arForTab.array[1]),'(',3);
-        up=_atoi64(trim(arForTab.array[0]));
-    }
+        label=core.userInput.first;
 
-    if(up<1) logError("Nie mo\276na utworzy\206 tablicy o podanym rozmiarze!",line);
-
-    //check data type
-    if(strcmp(arForDC.array[0],"INTEGER")||strcmp(arForDC.array[0],"INT")||strcmp(arForDC.array[0],"INT32")) size=SIZE_INT32;
-    else if(strcmp(arForDC.array[0],"SHORT")||strcmp(arForDC.array[0],"INT16")) size=SIZE_INT16;
-    else if(strcmp(arForDC.array[0],"BYTE")||strcmp(arForDC.array[0],"CHAR")||strcmp(arForDC.array[0],"INT8")) size=SIZE_INT8;
-    else logError("Nieobs\210ugiwany typ danych!",line);
-
-    //retrive value
-    if(arForDC.length==2)
-    {
-        value=arForDC.array[1];
-        
-        value[strlen(value)-1] = 0;
-        valueInt=_atoi64(value);
-        if(valueInt>pow(2,(size*8)-1)||valueInt<-pow(2,(size*8)-1)) logError("Liczba z poza zakresu!",line);
-
-    }
-    else if(arForDC.length==1) valueInt=0;   
-    else logError("B\210\245d sk\210adni!",line);
-
-    if(order->command==CMD_DS)
-    {
-        hashV=hash(order->tag);
-
-        for(i=0;i<inputsList.length;i++) 
+        for(j=0;j<core.userInput.length;j++)
         {
-            tag=inputsList.tags[i];
-            if(hashV==tag.hash) 
+            if(label->key.address==order->tagHash)
             {
-                if(tag.array_len==1) valueInt=tag.target;
-                else if(tag.target!=-1) hasTag=true;
-                break;
+                hasFound=true;
+
+                if(label->length==1) setMemoryValue(order->tagHash,label->value.target);
+                else
+                {
+                    arByComa=str_split(label->value.text,',',SPLIT_LIMIT);
+
+                    for(j=0;j<arByComa.length;j++) setMemoryValue(order->tagHash+(sizeof(int)*j),atoi(arByComa.array[j]));
+                }
             }
+            label=label->previous;
         }
     }
-
-    if(hasTag) 
-    {
-        arForInput=str_split(trim(tag.add),',',SPLIT_LIMIT);
-        //if this field has been completed by user
-        if(arForInput.length!=tag.array_len) logError("Dana tablica ma z\210y wymiar!",0);
-
-        for(size_t i=0;i<up;i++) 
-            setMemoryValue(allocateMemory(order->tag,valueInt,size,i==0,up),atoi(trim(arForInput.array[i])),line);
-        
-    } 
-    else 
-    {
-        //alocate single/array cell
-        for(size_t i=0;i<up;i++) allocateMemory(order->tag,valueInt,size,i==0,up);
-    }
+    if(!hasFound) for(i=0;i<up;i++) setMemoryValue(order->tagHash+(sizeof(int)*i),value);
 }
 
-size_t executeOrder(struct Order* order,int line,int orignalLine) 
+int executeOrder(struct Order* order,int cmdAddress) 
 {
-    struct CharArray arguments;
-    extern short stateRegisterValue;
-
-    arguments=str_split(strdup(order->args),',',SPLIT_LIMIT);
-
-    switch((enum Command)order->command)
+    switch((enum Command)order->commandHash)
     {
-        case CMD_NONE: return line;
+        case CMD_NONE: return cmdAddress; break;
         //memory allocation
-        case CMD_DS: manageDataSection(order,arguments,orignalLine); break;
-        case CMD_DC: manageDataSection(order,arguments,orignalLine); break;
+        case CMD_DS: manageDataSection(order); break;
+        case CMD_DC: manageDataSection(order); break;
         //math operations
-        case CMD_A: mathOperation(arguments.array[0],arguments.array[1],MEMORY,ADD,orignalLine); break;
-        case CMD_AR: mathOperation(arguments.array[0],arguments.array[1],REGISTER,ADD,orignalLine); break;
+        case CMD_A: mathOperation(order,MEMORY,ADD); break;
+        case CMD_AR: mathOperation(order,REGISTER,ADD); break;
 
-        case CMD_S: mathOperation(arguments.array[0],arguments.array[1],MEMORY,SUBSTRACT,orignalLine); break;
-        case CMD_SR: mathOperation(arguments.array[0],arguments.array[1],REGISTER,SUBSTRACT,orignalLine); break;
+        case CMD_S: mathOperation(order,MEMORY,SUBSTRACT); break;
+        case CMD_SR: mathOperation(order,REGISTER,SUBSTRACT); break;
 
-        case CMD_M: mathOperation(arguments.array[0],arguments.array[1],MEMORY,MULTIPLY,orignalLine); break;
-        case CMD_MR: mathOperation(arguments.array[0],arguments.array[1],REGISTER,MULTIPLY,orignalLine); break;
+        case CMD_M: mathOperation(order,MEMORY,MULTIPLY); break;
+        case CMD_MR: mathOperation(order,REGISTER,MULTIPLY); break;
 
-        case CMD_D: mathOperation(arguments.array[0],arguments.array[1],MEMORY,DIVIDE,orignalLine); break;
-        case CMD_DR: mathOperation(arguments.array[0],arguments.array[1],REGISTER,MULTIPLY,orignalLine); break;
+        case CMD_D: mathOperation(order,MEMORY,DIVIDE); break;
+        case CMD_DR: mathOperation(order,REGISTER,MULTIPLY); break;
         
-        case CMD_C: mathOperation(arguments.array[0],arguments.array[1],MEMORY,COMPARE,orignalLine); break;
-        case CMD_CR: mathOperation(arguments.array[0],arguments.array[1],REGISTER,COMPARE,orignalLine); break;
+        case CMD_C: mathOperation(order,MEMORY,COMPARE); break;
+        case CMD_CR: mathOperation(order,REGISTER,COMPARE); break;
         //data tranfer
-        case CMD_L: transferData(arguments.array[0],arguments.array[1],MtoR,orignalLine); break;
-        case CMD_LR: transferData(arguments.array[0],arguments.array[1],RtoR,orignalLine); break;
-        case CMD_ST: transferData(arguments.array[0],arguments.array[1],RtoM,orignalLine); break;
-        case CMD_LA: transferData(arguments.array[0],arguments.array[1],AtoR,orignalLine); break;
+        case CMD_L: transferData(order,MtoR); break;
+        case CMD_LR: transferData(order,RtoR); break;
+        case CMD_ST: transferData(order,RtoM); break;
+        case CMD_LA: transferData(order,AtoR); break;
         //jumps
-        case CMD_J: return(getJumpTarget(arguments.array[0],line)-1); break;
-        case CMD_JN: if(stateRegisterValue==STATE_NEGATIVE) return getJumpTarget(arguments.array[0],line)-1; break;
-        case CMD_JP: if(stateRegisterValue==STATE_POSITIVE) return getJumpTarget(arguments.array[0],line)-1; break;
-        case CMD_JZ: if(stateRegisterValue==STATE_ZERO) return getJumpTarget(arguments.array[0],line)-1; break;
+        case CMD_J: return(getJumpLabel(order->args[0])->value.target)-sizeof(struct Order); break;
+        case CMD_JN: if(getState()==STATE_NEGATIVE) return (getJumpLabel(order->args[0])->value.target)-sizeof(struct Order); break;
+        case CMD_JP: if(getState()==STATE_POSITIVE) return (getJumpLabel(order->args[0])->value.target)-sizeof(struct Order); break;
+        case CMD_JZ: if(getState()==STATE_ZERO) return (getJumpLabel(order->args[0])->value.target)-sizeof(struct Order); break;
 
-        default: logError("Nieznane polecenie w %d lini!",orignalLine);
+        default: logError("Nieznane polecenie w %d lini!",order->orginal_line);
     }
 
-    return line;
+    return cmdAddress;
 }
 
 void executeScript(struct OrderList orders)
 {
+    extern struct Core core;
     struct Order* order;
-    size_t i;
-    extern struct Register registers[];
+    int ordersSize,*ptr;
+    
+    core.memory=malloc(core.labels.first->value.target+(sizeof(int)*core.labels.first->length));
 
-    for(i=0;i<orders.length;i++) {
-        order=&orders.orders[i];
+    ptr=&core.registers[CMD_REGISTER];
+    ordersSize=sizeof(struct Order)*orders.length;
+    setRegisterValue(MEMORY_REGISTER,ordersSize,0);
 
-        //write to cmd reg current line number
-        registers[CMD_REGISTER].value=i;
-        i=executeOrder(order,i,order->orginal_line);
+    for(*ptr=0;*ptr<ordersSize;*ptr+=sizeof(struct Order)) {
+        order=&orders.orders[*ptr/sizeof(struct Order)];
+
+        *ptr=executeOrder(order,*ptr);
     }
 }
