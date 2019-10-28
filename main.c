@@ -1,4 +1,5 @@
 #include "declarations.h"
+#include <windows.h>
 
 int main(int argc, char **argv)
 {
@@ -11,6 +12,8 @@ int main(int argc, char **argv)
     struct OrderList orders;
     struct CharArray oArray;
     extern bool logRegisters;
+    HANDLE hConsole;
+    hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
     if(argc==2)
     {
@@ -51,6 +54,11 @@ int main(int argc, char **argv)
     //check if user has selected file
     if (!hasSetFile) logError("Nie podano pliku!",0);
 
+    SetConsoleTextAttribute(hConsole, GREEN);
+
+    printf("\nWybrano plik %s\n\n",fileName);
+
+    SetConsoleTextAttribute(hConsole, WHITE);
     //compile program
     printf("Trwa przetwarzanie pliku \253r\242d\210owego...\n");
 
@@ -59,15 +67,21 @@ int main(int argc, char **argv)
     start = getMicrotime();
 
     //start program
-    printf("Start programu...\n");
+    printf("\nStart programu...\n");
     
     executeScript(orders);
 
-    time=(long)((getMicrotime() - start) / 100);
+    time=(long)((getMicrotime() - start) / 1000);
+
+    SetConsoleTextAttribute(hConsole, YELLOW);
 
     if(hasSetOutput) printOutput(outputs);
 
+    SetConsoleTextAttribute(hConsole, GREEN);
+
     printf("\nWykonywanie programu trwa\210o ok. %d ms i zako\344czy\210o si\251 sukcesem!\n",time);
+
+    SetConsoleTextAttribute(hConsole, WHITE);
 
     return 0;
 }
@@ -88,7 +102,6 @@ void parseInput(char * args)
         arForEquals=str_split(arForVaribles.array[i],'=',2);
 
         tmpLabel=malloc(sizeof(struct Label));
-
         tmpLabel->key.hash=hash(arForEquals.array[0]);
         buffer=arForEquals.array[1];
 
@@ -109,5 +122,5 @@ void parseInput(char * args)
         if(core.userInput.length>0) tmpLabel->previous=core.userInput.first;
         core.userInput.first=tmpLabel;
         core.userInput.length++;
-    } 
+    }
 }

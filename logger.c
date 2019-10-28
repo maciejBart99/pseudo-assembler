@@ -1,4 +1,5 @@
 #include "declarations.h"
+#include <windows.h>
 
 bool logRegisters=false;
 
@@ -36,9 +37,14 @@ char * decToHexU2(long num)
 void logError(char*message,int line) 
 {
     char text[200];
+    HANDLE hConsole;
+    hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
-    sprintf(text,"B\210\245d w %d lini: %s \n",line,message);
+    SetConsoleTextAttribute(hConsole, RED);
+    if(line>0) sprintf(text,"\nB\210\245d w %d lini: %s \n",line,message);
+    else sprintf(text,"\nB\210\245d w poleceniu: %s \n",message);
     printf(text);
+    SetConsoleTextAttribute(hConsole, WHITE);
     exit(1);
 }
 
@@ -55,6 +61,8 @@ void printOutput(char* outputs)
     {
         splitByDot=str_split(strdup(splitByComa.array[i]),':',2);
         tmpLabel=getLabel(hash(splitByDot.array[splitByDot.length-1]));
+
+        if(tmpLabel==NULL) logError("Podane pole nie istnieje!",0);
 
         if(splitByDot.length==2)
         {

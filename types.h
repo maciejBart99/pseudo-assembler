@@ -17,6 +17,12 @@ struct CharArray
     size_t length;
 };
 
+struct State
+{
+    short flag;
+    int order_address;
+};
+
 //numerical cmd representation
 struct Order
 {
@@ -64,7 +70,7 @@ struct Core
     struct Labels userInput;
     int * memory;
     int registers[16];
-    short stateRegisterValue; 
+    struct State state;
 };
 
 #endif

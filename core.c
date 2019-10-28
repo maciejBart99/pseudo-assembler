@@ -7,7 +7,7 @@ struct Core core={
     {0,NULL}, //init user input
     NULL, //memory prt
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, //registers
-    0 //state register
+    {0,0}//state register
 };
 
 //functions
@@ -44,6 +44,7 @@ int addLabel(unsigned long hash,size_t length,short size)
                 previous->key.address=address;
                 break;
             }
+            previous=previous->previous;
         }
     }
     return address;
@@ -57,6 +58,7 @@ struct Label* getLabel(unsigned long hash)
 
     for(i=0;i<core.labels.length;i++)
     {
+
         if(previous->key.hash==hash) return previous;
       
         previous=previous->previous;
@@ -124,13 +126,13 @@ void setRegisterValue(short address,int value,int line)
 short getState()
 {
     extern struct Core core;
-    return core.stateRegisterValue;
+    return core.state.flag;
 }
 
 void updateStateRegister(short value)
 {
     extern struct Core core;
-    core.stateRegisterValue=value;
+    core.state.flag=value;
 }
 
 short getRegisterAdress(short name,int line) 
@@ -158,7 +160,7 @@ void mathOperation(struct Order* order, enum DataSource secondSource,enum Opeart
     {
         case ADD:   setRegisterValue(order->args[0],valueB+valueA,order->orginal_line);
             break;
-        case SUBSTRACT:  setRegisterValue(order->args[0],valueB-valueA,order->orginal_line);
+        case SUBSTRACT:  setRegisterValue(order->args[0],valueA-valueB,order->orginal_line);
             break;
         case MULTIPLY:  setRegisterValue(order->args[0],valueB*valueA,order->orginal_line);
             break;
@@ -215,6 +217,7 @@ struct Order parseOrder(char *line,int index,int orginal)
     if(argsBySpace.length>3) logError("B\210\245d sk\210adni!",orginal);
 
     order.commandHash=(argsBySpace.length>1)?hash(trim(argsBySpace.array[argsBySpace.length-2])):(unsigned long)CMD_NONE;
+
     order.orginal_line=orginal;
 
     if(argsBySpace.length>1)
@@ -321,6 +324,7 @@ void manageDataSection(struct Order* order)
     int value,up,i,j;
     struct Label *label;
     struct CharArray arByComa;
+    struct Label* memoryTmp;
     bool hasFound=false;
     extern struct Core core;
 
@@ -347,7 +351,6 @@ void manageDataSection(struct Order* order)
                 else
                 {
                     arByComa=str_split(label->value.text,',',SPLIT_LIMIT);
-
                     for(j=0;j<arByComa.length;j++) setMemoryValue(order->tagHash+(sizeof(int)*j),atoi(arByComa.array[j]));
                 }
             }
@@ -359,6 +362,7 @@ void manageDataSection(struct Order* order)
 
 int executeOrder(struct Order* order,int cmdAddress) 
 {
+
     switch((enum Command)order->commandHash)
     {
         case CMD_NONE: return cmdAddress; break;
@@ -391,7 +395,7 @@ int executeOrder(struct Order* order,int cmdAddress)
         case CMD_JP: if(getState()==STATE_POSITIVE) return (getJumpLabel(order->args[0])->value.target)-sizeof(struct Order); break;
         case CMD_JZ: if(getState()==STATE_ZERO) return (getJumpLabel(order->args[0])->value.target)-sizeof(struct Order); break;
 
-        default: logError("Nieznane polecenie w %d lini!",order->orginal_line);
+        default: logError("Nieznane polecenie!",order->orginal_line); break;
     }
 
     return cmdAddress;
@@ -402,16 +406,14 @@ void executeScript(struct OrderList orders)
     extern struct Core core;
     struct Order* order;
     int ordersSize,*ptr;
-    
-    core.memory=malloc(core.labels.first->value.target+(sizeof(int)*core.labels.first->length));
 
-    ptr=&core.registers[CMD_REGISTER];
+    if(core.labels.length>0) core.memory=malloc(core.labels.first->value.target+(sizeof(int)*core.labels.first->length));
+
+    ptr=&core.state.order_address;
     ordersSize=sizeof(struct Order)*orders.length;
-    setRegisterValue(MEMORY_REGISTER,ordersSize,0);
 
     for(*ptr=0;*ptr<ordersSize;*ptr+=sizeof(struct Order)) {
         order=&orders.orders[*ptr/sizeof(struct Order)];
-
         *ptr=executeOrder(order,*ptr);
     }
 }

@@ -10,6 +10,7 @@
 #include "types.h"
 
 
+
 //def
 #define TAGS_BUFF_SIZE 10
 #define ORDERS_CHUNK 100
@@ -27,6 +28,13 @@
 #define STRING_BUFF_SIZE 200
 #define CMD_LENGTH 3
 #define HASH_BASE 1
+
+#define BLUE 1
+#define RED 4
+#define GREEN 10
+#define YELLOW 14
+#define WHITE 15
+
 
 //functions
 struct OrderList parseScript(char *fileName);
