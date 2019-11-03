@@ -60,7 +60,7 @@ void printOutput(char* outputs)
     for(i=0;i<splitByComa.length;i++) 
     {
         splitByDot=str_split(strdup(splitByComa.array[i]),':',2);
-        tmpLabel=getLabel(hash(splitByDot.array[splitByDot.length-1]));
+        tmpLabel=getLabel(hash(splitByDot.array[splitByDot.length-1]),false,0);
 
         if(tmpLabel==NULL) logError("Podane pole nie istnieje!",0);
 

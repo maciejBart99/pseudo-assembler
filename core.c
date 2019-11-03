@@ -50,7 +50,7 @@ int addLabel(unsigned long hash,size_t length,short size)
     return address;
 }
 
-struct Label* getLabel(unsigned long hash) 
+struct Label* getLabel(unsigned long hash,bool allowNULL,int line)
 {
     size_t i;
     extern struct Core core;
@@ -58,16 +58,15 @@ struct Label* getLabel(unsigned long hash)
 
     for(i=0;i<core.labels.length;i++)
     {
-
         if(previous->key.hash==hash) return previous;
       
         previous=previous->previous;
     }
-
+    if(!allowNULL) logError("Nieodnaleziono etykiety!",line);
     return NULL;
 }
 
-void addJumpLabel(long hash,int address,short size)
+void addJumpLabel(unsigned long hash,int address,short size)
 {
     extern struct Core core;
 
@@ -85,7 +84,7 @@ void addJumpLabel(long hash,int address,short size)
     core.jumpLabels.length++;
 }
 
-struct Label* getJumpLabel(long hash) 
+struct Label* getJumpLabel(unsigned long hash,bool allowNULL,int line)
 {
     size_t i;
     extern struct Core core;
@@ -96,6 +95,8 @@ struct Label* getJumpLabel(long hash)
         if(previous->key.hash==hash) return previous;
         previous=previous->previous;
     }
+
+    if(!allowNULL) logError("Nieodnaleziono etykiety!",line);
     return NULL;
 }
 
@@ -245,7 +246,7 @@ struct Order parseOrder(char *line,int index,int orginal)
             }
             else
             {
-                order.args[tmp]=(argsByComa.length==2)?getLabel(hash(trim(argsByParent.array[0])))->value.target:hash(trim(argsByParent.array[0]));
+                order.args[tmp]=(argsByComa.length==2)?getLabel(hash(trim(argsByParent.array[0])),false,orginal)->value.target:hash(trim(argsByParent.array[0]));
                 if(argsByComa.length==2) order.args[2]=MEMORY_REGISTER+1;
             }
             order.args[tmp+1]=0;
@@ -253,7 +254,7 @@ struct Order parseOrder(char *line,int index,int orginal)
         else
         {
             argsByParent.array[1][strlen(argsByParent.array[1])-1]='\0';
-            order.args[tmp]=(isNumeric(argsByParent.array[0]))?atoi(trim(argsByParent.array[0])):((argsByComa.length==2)?getLabel(hash(trim(argsByParent.array[0])))->value.target:hash(trim(argsByParent.array[0])));
+            order.args[tmp]=(isNumeric(argsByParent.array[0]))?atoi(trim(argsByParent.array[0])):((argsByComa.length==2)?getLabel(hash(trim(argsByParent.array[0])),false,orginal)->value.target:hash(trim(argsByParent.array[0])));
             order.args[tmp+1]=atoi(argsByParent.array[1])+1;
         }
 
@@ -390,11 +391,14 @@ int executeOrder(struct Order* order,int cmdAddress)
         case CMD_ST: transferData(order,RtoM); break;
         case CMD_LA: transferData(order,AtoR); break;
         //jumps
-        case CMD_J: return(getJumpLabel(order->args[0])->value.target)-sizeof(struct Order); break;
-        case CMD_JN: if(getState()==STATE_NEGATIVE) return (getJumpLabel(order->args[0])->value.target)-sizeof(struct Order); break;
-        case CMD_JP: if(getState()==STATE_POSITIVE) return (getJumpLabel(order->args[0])->value.target)-sizeof(struct Order); break;
-        case CMD_JZ: if(getState()==STATE_ZERO) return (getJumpLabel(order->args[0])->value.target)-sizeof(struct Order); break;
-
+        case CMD_J: return(getJumpLabel(order->args[0],false,order->orginal_line)->value.target)-sizeof(struct Order);
+            break;
+        case CMD_JN: if(getState()==STATE_NEGATIVE) return (getJumpLabel(order->args[0],false,order->orginal_line)->value.target)-sizeof(struct Order);
+            break;
+        case CMD_JP: if(getState()==STATE_POSITIVE) return (getJumpLabel(order->args[0],false,order->orginal_line)->value.target)-sizeof(struct Order);
+            break;
+        case CMD_JZ: if(getState()==STATE_ZERO) return (getJumpLabel(order->args[0],false,order->orginal_line)->value.target)-sizeof(struct Order);
+            break;
         default: logError("Nieznane polecenie!",order->orginal_line); break;
     }
 

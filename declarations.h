@@ -57,11 +57,11 @@ bool isNumeric(char *str);
 
 int addLabel(unsigned long hash,size_t length,short size);
 
-struct Label* getLabel(unsigned long hash) ;
+struct Label* getLabel(unsigned long hash,bool allowNULL,int line);
 
-void addJumpLabel(long hash,int address,short size);
+void addJumpLabel(unsigned long hash,int address,short size);
 
-struct Label* getJumpLabel(long hash);
+struct Label* getJumpLabel(unsigned long hash,bool allowNULL,int line);
 
 int getMemoryValue(int address);
 

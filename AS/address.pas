@@ -5,12 +5,16 @@ WYNIK2 DS INT
 WYNIK3 DS INT
 WYNIK4 DS INT
 
+//Adresowanie za pomocą etykiety początku tablicy - 1 element
 L 0,WEKTOR
 L 10,CZTERY
+//Adresowanie za pomoca przesunięcie(rejestr z adresem) - 2 element
 L 1,0(10)
+//Adresowanie za pomocą adresu bezwzględnego - 3 element
 L 2,8
 A 10,CZTERY
 A 10,CZTERY
+//Adresowanie względem etykiety początku tablicy - 4 element
 L 3,WEKTOR(10)
 
 
