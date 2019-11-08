@@ -10,6 +10,12 @@ enum DataSource {MEMORY,REGISTER};
 
 enum Command {CMD_A=98,CMD_AR=3316,CMD_LA=3662,CMD_S=116,CMD_SR=3910,CMD_M=110,CMD_MR=3712,CMD_D=101,CMD_DR=3415,CMD_L=109,CMD_ST=3912,CMD_LR=3679,CMD_DS=3416,CMD_DC=3400,CMD_J=107,CMD_JZ=3621,CMD_JP=3611,CMD_JN=3609,CMD_C=100,CMD_CR=3382,CMD_NONE=0};
 
+enum DisplayMode {GUI,STEPS,NONE,UNDEF};
+
+enum ChangeTarget {REG,MEM,OTHER};
+
+enum StepMode {AUTO_STEP,MANUAL_STEP};
+
 //structure used in str_split
 struct CharArray 
 {
@@ -17,6 +23,14 @@ struct CharArray
     size_t length;
 };
 
+//representation of the last change used in highlighting changes
+struct Change
+{
+    enum ChangeTarget target;
+    int address;
+};
+
+//representation of state register
 struct State
 {
     short flag;
@@ -30,6 +44,7 @@ struct Order
     unsigned long tagHash;
     int args[3];
     int orginal_line;
+    char * orginal_text;
 };
 struct OrderList 
 {
@@ -41,6 +56,8 @@ struct OrderList
 struct Label
 {
     struct Label* previous;
+    char * orginal;
+    bool declared;
     //key can either be address or hash
     union
     {
@@ -71,6 +88,9 @@ struct Core
     int * memory;
     int registers[16];
     struct State state;
+    struct Change lastChange;
+    enum DisplayMode mode;
+    enum StepMode stepMode;
 };
 
 #endif

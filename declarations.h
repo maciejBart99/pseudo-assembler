@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <math.h>
+#include <conio.h>
 #include "types.h"
 
 
@@ -28,12 +29,18 @@
 #define STRING_BUFF_SIZE 200
 #define CMD_LENGTH 3
 #define HASH_BASE 1
+#define REG_DISPLAY_SIZE 26
+#define GUI_CMD_MARGIN 3
 
+
+#define HIGHLIGHT 23
 #define BLUE 1
 #define RED 4
 #define GREEN 10
 #define YELLOW 14
 #define WHITE 15
+#define CYAN 3
+#define GREY 8
 
 
 //functions
@@ -47,7 +54,7 @@ size_t getline(char **lineptr, size_t *n, FILE *stream);
 
 bool checkIfKeyWord(char* word);
 
-void executeScript(struct OrderList orders);
+void executeScript(struct OrderList orders,bool useGUI);
 
 long getMicrotime();
 
@@ -55,7 +62,7 @@ char *trim(char *str);
 
 bool isNumeric(char *str);
 
-int addLabel(unsigned long hash,size_t length,short size);
+int addLabel(unsigned long hash,char * orginal,size_t length,short size);
 
 struct Label* getLabel(unsigned long hash,bool allowNULL,int line);
 
@@ -81,11 +88,43 @@ void printOutput(char* outputs);
 
 unsigned long hash(char *str);
 
-void printRegisterChange(short reg_num);
+void printMemoryChange(int address,char * cmd);
+
+void printRegisterChange(short reg_num,char * cmd);
+
+void printMemoryInit(char * cmd,int size,int address,bool def,int value);
+
+void conventionalInterface(char * fileName,char * outputs,bool hasSetOutput);
+
+void printJump(char * cmd,bool success);
+
+void printCompare(short state,char * cmd);
 
 void parseInput(char * args);
 
 char * decToHexU2(long num);
+
+void setIsDeclared(int address);
+
+void updateGUI(int line,int address);
+
+void renderRegisters(int columns);
+
+void renderMemoryAndCode(int columns,int rows,int address);
+
+void mainGUI(char * fileName,char * outputs);
+
+void moveTo(int a, int b);
+
+void hidecursor();
+
+void askForMode();
+
+void askForFile(char * input);
+
+void showcursor();
+
+void dumpRegisters();
 
 long max(long a,long b);
 

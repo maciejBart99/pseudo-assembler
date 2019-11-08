@@ -1,4 +1,5 @@
 #include "declarations.h"
+#include <Windows.h>
 
 //global
 struct Core core={
@@ -7,11 +8,13 @@ struct Core core={
     {0,NULL}, //init user input
     NULL, //memory prt
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, //registers
-    {0,0}//state register
+    {0,0}, //state register
+    {OTHER,0}, //last change
+    UNDEF, //display mode
+    MANUAL_STEP
 };
 
-//functions
-int addLabel(unsigned long hash,size_t length,short size)
+int addLabel(unsigned long hash,char * orginal,size_t length,short size)
 {
     int address,i;
     extern struct Core core;
@@ -19,6 +22,8 @@ int addLabel(unsigned long hash,size_t length,short size)
 
     newLabel.key.hash=hash;
     newLabel.length=length;
+    newLabel.orginal=orginal;
+    newLabel.declared=false;
 
     if(core.labels.length>0)
     {
@@ -106,6 +111,22 @@ int getMemoryValue(int address)
     return core.memory[address/sizeof(int)];
 }
 
+void setIsDeclared(int address)
+{
+    size_t i;
+    extern struct Core core;
+    struct Label *previous = core.labels.first;
+
+    for (i = 0; i < core.labels.length; i++) {
+        if (previous->value.target == address) {
+            previous->declared=true;
+            return;
+        }
+
+        previous = previous->previous;
+    }
+}
+
 void setMemoryValue(int address,int value)
 {
     extern struct Core core;
@@ -134,6 +155,32 @@ void updateStateRegister(short value)
 {
     extern struct Core core;
     core.state.flag=value;
+}
+
+void reportChange(enum ChangeTarget target,int address,char * orginal)
+{
+    struct Change change;
+    extern struct Core core;
+
+    change.target=target;
+    change.address=address;
+    core.lastChange=change;
+
+    if(core.mode==STEPS)
+    {
+        if(target==MEM) printMemoryChange(address,orginal);
+        else if(target==REG) printRegisterChange(address,orginal);
+    }
+}
+
+int jump(struct Order * order)
+{
+    int result;
+    extern struct Core core;
+    result = (getJumpLabel(order->args[0],false,order->orginal_line)->value.target )- sizeof(struct Order);
+    printJump(order->orginal_text,true);
+    if(core.mode==GUI) updateGUI(0,result+ sizeof(struct Order));
+    return result;
 }
 
 short getRegisterAdress(short name,int line) 
@@ -175,8 +222,12 @@ void mathOperation(struct Order* order, enum DataSource secondSource,enum Opeart
     else if(getRegisterValue(order->args[0],order->orginal_line)<0) updateStateRegister(STATE_NEGATIVE);
     else updateStateRegister(STATE_ZERO);
 
-    if(type==COMPARE) setRegisterValue(order->args[0],valueA,order->orginal_line);
-    else printRegisterChange(order->args[0]);
+    if(type==COMPARE)
+    {
+        setRegisterValue(order->args[0],valueA,order->orginal_line);
+        printCompare(getState(),order->orginal_text);
+    }
+    else reportChange(REG,order->args[0],order->orginal_text);
 }
 
 void transferData(struct Order *order, enum TransferType type) 
@@ -191,15 +242,16 @@ void transferData(struct Order *order, enum TransferType type)
     switch (type)
     {
         case MtoR: setRegisterValue(order->args[0],getMemoryValue(addressB),order->orginal_line);
-                    printRegisterChange(order->args[0]);
+                    reportChange(REG,order->args[0],order->orginal_text);
             break;
         case RtoM: setMemoryValue(addressB,getRegisterValue(order->args[0],order->orginal_line));
+                    reportChange(MEM,addressB,order->orginal_text);
             break;
         case RtoR: setRegisterValue(order->args[0],getRegisterValue(order->args[1],order->orginal_line),order->orginal_line);
-                    printRegisterChange(order->args[0]);
+                    reportChange(REG,order->args[0],order->orginal_text);
             break;
         case AtoR: setRegisterValue(order->args[0],order->args[1],order->orginal_line);
-                    printRegisterChange(order->args[0]);
+                    reportChange(REG,order->args[0],order->orginal_text);
             break;
     }
 }
@@ -263,7 +315,7 @@ struct Order parseOrder(char *line,int index,int orginal)
             order.tagHash=hash(argsBySpace.array[0]);
             labelSize=(argsByStar.length>1)?atoi(trim(argsByStar.array[0])):1;
 
-            if((enum Command)order.commandHash==CMD_DC||(enum Command)order.commandHash==CMD_DS) order.tagHash=addLabel(order.tagHash,labelSize,4);
+            if((enum Command)order.commandHash==CMD_DC||(enum Command)order.commandHash==CMD_DS) order.tagHash=addLabel(order.tagHash,argsBySpace.array[0],labelSize,4);
             else addJumpLabel(order.tagHash,index*sizeof(struct Order),sizeof(struct Order));
         }
         else order.tagHash=0;
@@ -308,7 +360,9 @@ struct OrderList parseScript(char *fileName)
         if(strlen(trim(line))>2) 
         {
             resultLength++;
-            resultList[resultLength-1]=parseOrder(line,resultLength-1,line_num);
+            resultList[resultLength-1]=parseOrder(strdup(line),resultLength-1,line_num);
+            resultList[resultLength-1].orginal_text=malloc(200*sizeof(char));
+            strcpy(resultList[resultLength-1].orginal_text,trim(line));
         }
     }
     fclose(fptr);    
@@ -320,7 +374,7 @@ struct OrderList parseScript(char *fileName)
 }
 
 //function to handle DS DC instructions
-void manageDataSection(struct Order* order) 
+void manageDataSection(struct Order* order,bool isDC)
 {
     int value,up,i,j;
     struct Label *label;
@@ -337,6 +391,8 @@ void manageDataSection(struct Order* order)
     if(order->args[2]==0) value=order->args[1]-1;
     else value=order->args[2]-1;
 
+    setIsDeclared(order->tagHash);
+
     //check if this cell has been typed by user
     if(core.userInput.length>0)
     {
@@ -348,17 +404,31 @@ void manageDataSection(struct Order* order)
             {
                 hasFound=true;
 
-                if(label->length==1) setMemoryValue(order->tagHash,label->value.target);
+                if(label->length==1)
+                {
+                    setMemoryValue(order->tagHash,label->value.target);
+                    printMemoryInit(order->orginal_text,1,order->tagHash,true,label->value.target);
+                }
                 else
                 {
                     arByComa=str_split(label->value.text,',',SPLIT_LIMIT);
+                    printMemoryInit(order->orginal_text,arByComa.length,order->tagHash,true,label->value.target);
                     for(j=0;j<arByComa.length;j++) setMemoryValue(order->tagHash+(sizeof(int)*j),atoi(arByComa.array[j]));
                 }
             }
             label=label->previous;
         }
     }
-    if(!hasFound) for(i=0;i<up;i++) setMemoryValue(order->tagHash+(sizeof(int)*i),value);
+    if(!hasFound)
+    {
+        if(isDC) printMemoryInit(order->orginal_text,up,order->tagHash,true,value);
+        else
+        {
+            value=0;
+            printMemoryInit(order->orginal_text,up,order->tagHash,false,value);
+        }
+        for(i=0;i<up;i++) setMemoryValue(order->tagHash+(sizeof(int)*i),value);
+    }
 }
 
 int executeOrder(struct Order* order,int cmdAddress) 
@@ -368,8 +438,8 @@ int executeOrder(struct Order* order,int cmdAddress)
     {
         case CMD_NONE: return cmdAddress; break;
         //memory allocation
-        case CMD_DS: manageDataSection(order); break;
-        case CMD_DC: manageDataSection(order); break;
+        case CMD_DS: manageDataSection(order,false); break;
+        case CMD_DC: manageDataSection(order,true); break;
         //math operations
         case CMD_A: mathOperation(order,MEMORY,ADD); break;
         case CMD_AR: mathOperation(order,REGISTER,ADD); break;
@@ -391,13 +461,16 @@ int executeOrder(struct Order* order,int cmdAddress)
         case CMD_ST: transferData(order,RtoM); break;
         case CMD_LA: transferData(order,AtoR); break;
         //jumps
-        case CMD_J: return(getJumpLabel(order->args[0],false,order->orginal_line)->value.target)-sizeof(struct Order);
+        case CMD_J: return jump(order);
             break;
-        case CMD_JN: if(getState()==STATE_NEGATIVE) return (getJumpLabel(order->args[0],false,order->orginal_line)->value.target)-sizeof(struct Order);
+        case CMD_JN: if(getState()==STATE_NEGATIVE) return jump(order);
+                    else printJump(order->orginal_text,false);
             break;
-        case CMD_JP: if(getState()==STATE_POSITIVE) return (getJumpLabel(order->args[0],false,order->orginal_line)->value.target)-sizeof(struct Order);
+        case CMD_JP: if(getState()==STATE_POSITIVE) return jump(order);
+                    else printJump(order->orginal_text,false);
             break;
-        case CMD_JZ: if(getState()==STATE_ZERO) return (getJumpLabel(order->args[0],false,order->orginal_line)->value.target)-sizeof(struct Order);
+        case CMD_JZ: if(getState()==STATE_ZERO) return jump(order);
+                    else printJump(order->orginal_text,false);
             break;
         default: logError("Nieznane polecenie!",order->orginal_line); break;
     }
@@ -405,19 +478,39 @@ int executeOrder(struct Order* order,int cmdAddress)
     return cmdAddress;
 }
 
-void executeScript(struct OrderList orders)
+void executeScript(struct OrderList orders,bool useGUI)
 {
     extern struct Core core;
     struct Order* order;
     int ordersSize,*ptr;
+    int key;
 
     if(core.labels.length>0) core.memory=malloc(core.labels.first->value.target+(sizeof(int)*core.labels.first->length));
 
     ptr=&core.state.order_address;
     ordersSize=sizeof(struct Order)*orders.length;
 
-    for(*ptr=0;*ptr<ordersSize;*ptr+=sizeof(struct Order)) {
+    for(*ptr=0;*ptr<ordersSize;*ptr+=sizeof(struct Order))
+    {
+        if(core.mode==GUI) updateGUI(0,*ptr);
+        if(core.mode==GUI||core.mode==STEPS)
+        {
+            if(core.stepMode==AUTO_STEP) Sleep(500);
+            else
+            {
+                key=_getch();
+                if(key==13) core.stepMode=AUTO_STEP;
+                else if(key==3)
+                {
+                    system("cls");
+                    showcursor();
+                    exit(0);
+                }
+            }
+        }
+
         order=&orders.orders[*ptr/sizeof(struct Order)];
         *ptr=executeOrder(order,*ptr);
     }
+    if(core.mode==GUI) updateGUI(0,*ptr);
 }
