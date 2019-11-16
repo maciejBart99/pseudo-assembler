@@ -1,33 +1,44 @@
 #include "declarations.h"
 #include <windows.h>
+#include <signal.h>
 
-int main(int argc, char **argv) {
-    char fileName[STRING_BUFF_SIZE], outputs[STRING_BUFF_SIZE];
-    char lastTag = ' ';
+int main(int argc, char **argv)
+{
+    char fileName[STRING_BUFF_SIZE], outputs[STRING_BUFF_SIZE], lastTag = ' ';
     int i;
-    bool hasSetFile = false;
+    bool hasSetFile = false, hasSetOutput = false;
     long time, start;
-    bool hasSetOutput = false;
     struct OrderList orders;
     struct CharArray oArray;
     extern struct Core core;
     HANDLE hConsole;
 
+    //custom ctrl+c handler
+    signal(SIGINT, sigintHandler);
+
     hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
     //parse given arguments
-    if (argc == 2) {
+    if (argc == 2)
+    {
         strcpy(fileName, argv[1]);
         hasSetFile = true;
-    } else
-        for (i = 1; i < argc; i++) {
-            if (*argv[i] == '-') {
+    }
+    else
+    {
+        for (i = 1; i < argc; i++)
+        {
+            if (*argv[i] == '-')
+            {
                 if (*(argv[i] + 1) == 's') core.mode = STEPS;
                 else if (*(argv[i] + 1) == 'g') core.mode = GUI;
                 else if (*(argv[i] + 1) == 'n') core.mode = NONE;
                 else lastTag = *(argv[i] + 1);
-            } else {
-                switch (lastTag) {
+            }
+            else
+            {
+                switch (lastTag)
+                {
                     case 'f':
                         strcpy(fileName, argv[i]);
                         hasSetFile = true;
@@ -47,6 +58,7 @@ int main(int argc, char **argv) {
                 lastTag = ' ';
             }
         }
+    }
 
     //Hello message
     printf("\nPseudo-Assembler by Maciej \210ukasik 2019...\n\n");
@@ -61,7 +73,7 @@ int main(int argc, char **argv) {
 
     //start execution
     if (core.mode != GUI) conventionalInterface(fileName, outputs, hasSetOutput);
-    else if (core.mode == GUI) mainGUI(fileName, outputs);
+    else if (core.mode == GUI) mainGUI(fileName, outputs, hasSetOutput);
 
     //reset console settings
     SetConsoleTextAttribute(hConsole, WHITE);
@@ -69,7 +81,9 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void conventionalInterface(char *fileName, char *outputs, bool hasSetOutput) {
+//interface for for "result only" and "step by step" modes
+void conventionalInterface(char *fileName, char *outputs, bool hasSetOutput)
+{
     HANDLE hConsole;
     struct OrderList orders;
     long time, start;
@@ -91,8 +105,10 @@ void conventionalInterface(char *fileName, char *outputs, bool hasSetOutput) {
 
     //start program
     printf("\nStart programu...\n");
+
     SetConsoleTextAttribute(hConsole, GREEN);
-    if (core.mode == STEPS) {
+    if (core.mode == STEPS)
+    {
         printf("\nWszystkie rejestry i pami\251\206 puste...\n\n");
         SetConsoleTextAttribute(hConsole, WHITE);
         printf("(Spacja) - Nast\251pna linijka (Enter) - Uruchom");
@@ -112,13 +128,13 @@ void conventionalInterface(char *fileName, char *outputs, bool hasSetOutput) {
 
     //print success msg
     SetConsoleTextAttribute(hConsole, GREEN);
-    if (core.mode == NONE)
-        printf("\nWykonywanie programu trwa\210o ok. %d ms i zako\344czy\210o si\251 sukcesem!\n", time);
+    if (core.mode == NONE) printf("\nWykonywanie programu trwa\210o ok. %d ms i zako\344czy\210o si\251 sukcesem!\n", time);
     else printf("\nWykonywanie programu zako\344czy\210o si\251 sukcesem!\n");
 }
 
 //parse string containing input varibles passed by user
-void parseInput(char *args) {
+void parseInput(char *args)
+{
     struct CharArray arForVaribles, arForEquals, arForTable;
     struct Label *tmpLabel;
     extern struct Core core;
@@ -127,20 +143,24 @@ void parseInput(char *args) {
 
     arForVaribles = str_split(args, ';', SPLIT_LIMIT);
 
-    for (i = 0; i < arForVaribles.length; i++) {
+    for (i = 0; i < arForVaribles.length; i++)
+    {
         arForEquals = str_split(arForVaribles.array[i], '=', 2);
 
         tmpLabel = malloc(sizeof(struct Label));
         tmpLabel->key.hash = hash(arForEquals.array[0]);
         buffer = arForEquals.array[1];
 
-        if (*buffer == '[') {
+        if (*buffer == '[')
+        {
             buffer++;
             buffer[strlen(buffer) - 1] = '\0';
             arForTable = str_split(strdup(buffer), ',', SPLIT_LIMIT);
             tmpLabel->value.text = buffer;
             tmpLabel->length = arForTable.length;
-        } else {
+        }
+        else
+        {
             tmpLabel->length = 1;
             tmpLabel->value.target = atoi(buffer);
         }
@@ -151,21 +171,24 @@ void parseInput(char *args) {
     }
 }
 
-void askForMode() {
+void askForMode()
+{
     HANDLE hConsole;
     extern struct Core core;
     int key;
 
     hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
-    while (true) {
+    while (true)
+    {
         SetConsoleTextAttribute(hConsole, YELLOW);
         printf("\n\nW jakim trybie chcesz uruchomi\206 interpreter?\n");
         SetConsoleTextAttribute(hConsole, WHITE);
         printf(" 1) - Tylko wynik\n 2) - Wizulizacja dzia\210ania\n 3) - Lista krok\242w\n\n Wybieram:");
         key = getchar();
 
-        switch (key) {
+        switch (key)
+        {
             case 49:
                 core.mode = NONE;
                 return;
@@ -179,7 +202,8 @@ void askForMode() {
     }
 }
 
-void askForFile(char *input) {
+void askForFile(char *input)
+{
     HANDLE hConsole;
 
     hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -187,4 +211,15 @@ void askForFile(char *input) {
     printf("\nWybierz plik, kt\242ry chcesz uruchomi\206:");
     SetConsoleTextAttribute(hConsole, WHITE);
     gets(input);
+}
+
+void sigintHandler(int sig_num)
+{
+    HANDLE hConsole;
+
+    hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    signal(SIGINT, sigintHandler);
+    showcursor();
+    SetConsoleTextAttribute(hConsole, WHITE);
+    exit(0);
 }

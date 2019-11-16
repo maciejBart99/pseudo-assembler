@@ -2,7 +2,7 @@
 #include <Windows.h>
 
 //global
-struct Core core={
+struct Core core = {
     {0,NULL}, //init memory labels
     {0,NULL}, //init jump labels
     {0,NULL}, //init user input
@@ -14,6 +14,7 @@ struct Core core={
     MANUAL_STEP
 };
 
+//add memory label
 int addLabel(unsigned long hash,char * orginal,size_t length,short size)
 {
     int address,i;
@@ -55,6 +56,7 @@ int addLabel(unsigned long hash,char * orginal,size_t length,short size)
     return address;
 }
 
+//get memory label
 struct Label* getLabel(unsigned long hash,bool allowNULL,int line)
 {
     size_t i;
@@ -117,8 +119,10 @@ void setIsDeclared(int address)
     extern struct Core core;
     struct Label *previous = core.labels.first;
 
-    for (i = 0; i < core.labels.length; i++) {
-        if (previous->value.target == address) {
+    for (i = 0; i < core.labels.length; i++)
+    {
+        if (previous->value.target == address)
+        {
             previous->declared=true;
             return;
         }
@@ -485,17 +489,18 @@ void executeScript(struct OrderList orders,bool useGUI)
     int ordersSize,*ptr;
     int key;
 
-    if(core.labels.length>0) core.memory=malloc(core.labels.first->value.target+(sizeof(int)*core.labels.first->length));
+    if(core.labels.length>0) core.memory = malloc(core.labels.first->value.target + (sizeof(int) * core.labels.first->length));
 
-    ptr=&core.state.order_address;
-    ordersSize=sizeof(struct Order)*orders.length;
+    ptr = &core.state.order_address;
+    ordersSize = sizeof(struct Order) * orders.length;
 
-    for(*ptr=0;*ptr<ordersSize;*ptr+=sizeof(struct Order))
+    for(*ptr = 0;*ptr < ordersSize;*ptr += sizeof(struct Order))
     {
         if(core.mode==GUI) updateGUI(0,*ptr);
-        if(core.mode==GUI||core.mode==STEPS)
+        if(core.mode==GUI || core.mode==STEPS)
         {
-            if(core.stepMode==AUTO_STEP) Sleep(500);
+            //manage auto and wait for key in script execution
+            if(core.stepMode == AUTO_STEP) Sleep(500);
             else
             {
                 key=_getch();

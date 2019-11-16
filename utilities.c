@@ -1,4 +1,5 @@
 #include "declarations.h"
+#include <sys/time.h>
 
 //generate a hash for a string
 unsigned long hash(char *str)
@@ -137,7 +138,7 @@ struct CharArray str_split(char* a_str, char a_delim,int limit)
     idx=0;
 
     //split string
-    while (*(a_str+idx)!='\0')
+    while (*(a_str+idx) != '\0')
     {
         if(element>=limit-1)
         {
@@ -146,17 +147,20 @@ struct CharArray str_split(char* a_str, char a_delim,int limit)
             break;
         }
 
-        if(*(a_str+idx)==a_delim) {
+        if(*(a_str+idx)==a_delim)
+        {
             if(lastWasDel) tmp++;
-            else {
+            else
+            {
                 *(a_str+idx)='\0';
                 *(result.array+element)=strdup(a_str+tmp);
                 hasSetPointer=false;
                 element++;
                 lastWasDel=true;
                 tmp=idx+1;
-                }
-        } else lastWasDel=false;
+            }
+        }
+        else lastWasDel=false;
         
         idx++;
     }
@@ -174,8 +178,7 @@ bool checkIfKeyWord(char* word)
 
     length=sizeof(keyWords)/(CMD_LENGTH*sizeof(char));
 
-    for (i = 0; i < length; i++)
-        if(strcmp(keyWords[i],word)==0) return true;
+    for (i = 0; i < length; i++) if(strcmp(keyWords[i],word)==0) return true;
         
     return false;
 }
@@ -187,30 +190,4 @@ long max(long a,long b)
     else return b;
 }
 
-//move cl cursor to cords
-void moveTo(int a, int b)
-{
-    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-    COORD pos = {b, a};
-    SetConsoleCursorPosition(hConsole, pos);
-}
 
-//hide cursor in cl
-void hidecursor()
-{
-    HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-    CONSOLE_CURSOR_INFO info;
-    info.dwSize = 100;
-    info.bVisible = FALSE;
-    SetConsoleCursorInfo(consoleHandle, &info);
-}
-
-//show cursor in cl
-void showcursor()
-{
-    HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-    CONSOLE_CURSOR_INFO info;
-    info.dwSize = 30;
-    info.bVisible = TRUE;
-    SetConsoleCursorInfo(consoleHandle, &info);
-}

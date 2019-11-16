@@ -4,22 +4,24 @@
 static struct OrderList orders;
 
 //init graphical simulation
-void mainGUI(char * fileName,char * outputs)
-{
+void mainGUI(char * fileName,char * outputs,bool hasSetOutputs) {
     HANDLE hConsole;
     extern struct OrderList orders;
 
     hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
     orders = parseScript(fileName);
-    executeScript(orders,true);
+    executeScript(orders, true);
 
     system("pause");
     system("cls");
     showcursor();
-    printf("Program wygenerowa\210 nast\251puj\245ce wyj\230cie:");
-    SetConsoleTextAttribute(hConsole, YELLOW);
-    printOutput(outputs);
+    if (hasSetOutputs)
+    {
+        printf("Program wygenerowa\210 nast\251puj\245ce wyj\230cie:");
+        SetConsoleTextAttribute(hConsole, YELLOW);
+        printOutput(outputs);
+    }
     SetConsoleTextAttribute(hConsole, GREEN);
     printf("\nWykonywanie programu zako\344czy\210o si\251 sukcesem!\n");
     SetConsoleTextAttribute(hConsole, WHITE);
@@ -133,4 +135,32 @@ void renderMemoryAndCode(int columns,int rows,int address)
         printf("\n");
         SetConsoleTextAttribute(hConsole, WHITE);
     }
+}
+
+//move cl cursor to cords
+void moveTo(int a, int b)
+{
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    COORD pos = {b, a};
+    SetConsoleCursorPosition(hConsole, pos);
+}
+
+//hide cursor in cl
+void hidecursor()
+{
+    HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO info;
+    info.dwSize = 100;
+    info.bVisible = FALSE;
+    SetConsoleCursorInfo(consoleHandle, &info);
+}
+
+//show cursor in cl
+void showcursor()
+{
+    HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO info;
+    info.dwSize = 30;
+    info.bVisible = TRUE;
+    SetConsoleCursorInfo(consoleHandle, &info);
 }

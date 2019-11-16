@@ -2,7 +2,6 @@
 #define declarations
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/time.h>
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
@@ -112,7 +111,7 @@ void renderRegisters(int columns);
 
 void renderMemoryAndCode(int columns,int rows,int address);
 
-void mainGUI(char * fileName,char * outputs);
+void mainGUI(char * fileName,char * outputs,bool hasSetOutputs);
 
 void moveTo(int a, int b);
 
@@ -127,5 +126,7 @@ void showcursor();
 void dumpRegisters();
 
 long max(long a,long b);
+
+void sigintHandler(int sig_num);
 
 #endif
