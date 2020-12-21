@@ -1,9 +1,0 @@
-{
-    "files.associations": {
-        "functions.h": "c",
-        "cstdbool": "cpp",
-        "cstdio": "cpp",
-        "structures.h": "c",
-        "limits": "c"
-    }
-}
